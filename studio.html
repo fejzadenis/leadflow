@@ -42,10 +42,17 @@ td{padding:7px 8px;border-bottom:1px solid rgba(34,48,60,.55);vertical-align:top
 a{color:#8fb7ff}
 .cta{border:1px solid rgba(79,140,255,.45);background:rgba(79,140,255,.08)}
 .cta a.btn{display:inline-block;margin-top:10px;text-decoration:none;border-radius:9px;padding:11px 18px;background:var(--accent);color:#fff;font-weight:600;font-size:14px}
+.paid .cta{display:none}
+.card.paidban{border:1px solid rgba(80,190,120,.45);background:rgba(80,190,120,.08)}
 </style></head><body><div class="wrap">
 <span class="badge">runs offline</span><span class="badge">nothing uploaded</span><span class="badge">no account</span>
 <h1>Repair a broken CSV <span>without uploading it</span></h1>
 <p class="sub">Paste a broken export or pick a CSV: names that open as question marks, broken quotes, ragged rows, stray spaces and duplicate people are all handled, and you download a cleaned CSV you can import, the candidate email patterns in their own file, and a written reason for every row that was dropped or rewritten. Everything runs in this tab - your file is never uploaded and the page makes no network request.</p>
+
+<div class="card paidban" id="paidban" hidden>
+  <div class="lbl">Payment received - this run is covered</div>
+  <p class="hint">You have already paid for this file, so nothing on this page asks you to pay again. Drop it below and take the cleaned CSV, the patterns and the report now - the same cleaner, in this tab, no upload and no email. What you paid for is the human pass: if the file is one the rules cannot fix (a merged column, two header rows, an export your import still rejects after cleaning), mail it to <b>perun.intelligence@gmail.com</b> and a person finishes it within 24 hours. 14-day refund if the delivered file does not match the description.</p>
+</div>
 
 <div class="card">
   <div class="lbl">1 - Your lead CSV (paste it, or pick a file)</div>
@@ -79,7 +86,7 @@ a{color:#8fb7ff}
   <p class="hint"><a href="sample/before.csv">before.csv</a> &middot; <a href="sample/before-cleaned.csv">cleaned.csv</a> &middot; <a href="sample/before-report.md">report.md</a> &middot; <a href="sample/before-reply.txt">the email it comes back with</a> &mdash; download all four and check the rows. A paid repair is these same three files on <i>your</i> export, with a person reading the report before it is sent back.</p>
 </div>
 
-<div class="card cta">
+<div class="card cta" id="cta">
   <div class="lbl">3 - If the file still will not import</div>
   <p class="sub" style="margin-top:0">The cleaner handles what a rule can decide. It cannot unsplit a column that was merged, choose between two header rows, or rescue a file your import still rejects after cleaning. That job is one export, done by a person: the cleaned file plus a report naming every row dropped and every address rewritten, back within 24 hours. 14-day refund if it does not match this description.</p>
   <p class="hint" style="margin-top:10px"><b>$49</b> &middot; up to 5,000 rows &mdash; one export, one pass.<br><b>$79</b> &middot; up to 25,000 rows &mdash; a month of form exports, or one CRM migration batch.<br><b>$99</b> &middot; up to 100,000 rows &mdash; the full house list; the clean-up is automated, so size costs time, not accuracy.</p>
@@ -711,6 +718,16 @@ function lfPayUrl(amount, rows) {
     '&cancel_return=' + encodeURIComponent('https://fejzadenis.github.io/leadflow/studio.html');
 }
 
+// A buyer who pays on the studio page is returned from PayPal to thanks.html, and thanks.html sends
+// them back here with ?paid=1 so the file can be cleaned in the same tab instead of waiting for a
+// person. Pure and strict: only the exact pair counts, so nothing else in the query can flip it.
+function lfPaidMode(search) {
+  var q = String(search == null ? '' : search);
+  if (q.charAt(0) === '?') q = q.slice(1);
+  if (!q) return false;
+  return q.split('&').some(function (part) { return part === 'paid=1'; });
+}
+
 var LF_OUT = null;
 
 
@@ -779,6 +796,15 @@ function renderStudio() {
         '<a href="' + lfPayUrl(tier.amount, total) + '" target="_blank" rel="noopener"><b>Pay ' + esc(tier.label) + ' and email this file</b></a>' +
         ' &mdash; cleaned file plus the report back within 24 hours, 14-day refund.'
       : '<b>Your file: ' + total + ' rows, past the 100,000-row tier</b> &mdash; mail the row count first and the answer names a price before you pay.';
+    // A buyer who already paid must not be sold the repair a second time, and the price sentence is
+    // the only place on this page that could do it. Same rule as the CTA above: the flag decides.
+    if (lfPaidMode(location.search)) {
+      ask.hidden = false;
+      ask.innerHTML = '<b>This run is covered by your payment.</b> Take the three files above now - they are the deliverable. ' +
+        'If your import still rejects this file after cleaning, <a href="mailto:perun.intelligence@gmail.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body) + '">send it to a person</a> ' +
+        'with the error your import shows and it is finished by hand within 24 hours, which is what you paid for. Nothing is attached until you attach it yourself.';
+      return;
+    }
     ask.hidden = false;
     ask.innerHTML = 'If your import still rejects this file after cleaning, that is the one job rules cannot decide. ' +
       '<a href="mailto:perun.intelligence@gmail.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body) + '">Send it to a person</a> ' +
@@ -795,6 +821,16 @@ document.getElementById('sample').addEventListener('click', function () {
 document.getElementById('d1').addEventListener('click', function () { if (LF_OUT) lfSave('leadflow-cleaned.csv', lfCleanedCsv(LF_OUT)); });
 document.getElementById('d2').addEventListener('click', function () { if (LF_OUT) lfSave('leadflow-patterns.csv', lfPatternsCsv(LF_OUT)); });
 document.getElementById('d3').addEventListener('click', function () { if (LF_OUT) lfSave('leadflow-report.md', lfReport(LF_OUT)); });
+
+// Paid mode is applied last, after every listener is bound, so a hiccup here can never leave the
+// tool dead: it only unhides the banner, hides the price card and rewrites the one email hint.
+if (lfPaidMode(location.search)) {
+  document.body.className = (document.body.className ? document.body.className + ' ' : '') + 'paid';
+  var _paidBan = document.getElementById('paidban');
+  if (_paidBan) _paidBan.hidden = false;
+  var _paidMail = document.getElementById('mailnow');
+  if (_paidMail) _paidMail.innerHTML = 'Or mail the export to <a href="mailto:perun.intelligence@gmail.com?subject=CSV%20repair">perun.intelligence@gmail.com</a> with the subject <b>CSV repair</b> - a person finishes it by hand within 24 hours.';
+}
 function lfShowEncoding(decoded, fileName) {
   var el = document.getElementById('enc');
   if (!el) return;
