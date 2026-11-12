@@ -1,10 +1,29 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LeadFlow — payment received</title>
-<style>:root{--bg:#0b0f14;--card:#131a22;--text:#e6edf3;--muted:#8b98a9;--accent:#4f8cff;--border:#22303c}*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}.wrap{max-width:720px;margin:0 auto;padding:56px 24px}h1{font-size:2rem;margin-bottom:14px}.lead{color:var(--muted);font-size:1.1rem;margin-bottom:20px}.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin:20px 0}ul{margin:8px 0 0 20px}li{margin:6px 0;color:var(--muted)}a{color:var(--accent)}.btn{display:inline-block;margin-top:16px;background:var(--accent);color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:600}.ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}</style></head>
+<meta name="robots" content="noindex,follow">
+<style>:root{--bg:#0b0f14;--card:#131a22;--text:#e6edf3;--muted:#8b98a9;--accent:#4f8cff;--border:#22303c}*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}.wrap{max-width:720px;margin:0 auto;padding:56px 24px}h1{font-size:2rem;margin-bottom:14px}h2{font-size:1.05rem;margin-bottom:8px}.lead{color:var(--muted);font-size:1.1rem;margin-bottom:20px}.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin:20px 0}ul{margin:8px 0 0 20px}li{margin:6px 0;color:var(--muted)}a{color:var(--accent)}.btn{display:inline-block;margin-top:16px;background:var(--accent);color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:600}.ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}.muted{color:var(--muted);font-size:13.5px}</style></head>
 <body><div class="wrap">
 <h1>Payment received — thank you! 🎉</h1>
-<p class="lead">Your LeadFlow Automation Pack is being prepared. <b>I'll send the ZIP to your PayPal email within a few minutes.</b></p>
-<div class="card"><b>What's next</b><ul><li>Unzip → import the 4 workflow JSONs into n8n.</li><li>Read START-HERE.md (15-min setup).</li><li>Connect Google Sheets; add a DeepSeek key only for workflow 03.</li></ul></div>
-<p>Don't see the ZIP within 15 minutes? Open a delivery request with your PayPal transaction ID:</p>
+<p class="lead">Two things can be bought on this site, and the next step depends on which one you paid for. Both are tied to the email address on your PayPal receipt.</p>
+
+<div class="card"><h2>You bought a CSV repair — $49</h2>
+<ul>
+<li><b>1.</b> Send the file to the address shown on your PayPal receipt, with the subject <b>CSV repair</b>. A link to the file is fine if it is large.</li>
+<li><b>2.</b> Within 24 hours you get the cleaned CSV back, plus a report naming every row that was dropped and every address that was rewritten — and nothing changes in your data silently.</li>
+<li><b>3.</b> If the file is bigger than 5,000 rows, or it cannot be repaired honestly, you get a full refund and a direct answer instead of a half-cleaned file.</li>
+</ul>
+<p class="muted">Nothing was uploaded to the site you bought from — the file only moves by email, and it is deleted after the delivery.</p>
+</div>
+
+<div class="card"><h2>You bought the LeadFlow Automation Pack — $49 launch</h2>
+<ul>
+<li><b>1.</b> The ZIP is sent to your PayPal email within a few minutes.</li>
+<li><b>2.</b> Unzip → import the 4 workflow JSONs into n8n.</li>
+<li><b>3.</b> Read START-HERE.md (15-min setup), connect Google Sheets, and add a DeepSeek key only for workflow 03.</li>
+</ul>
+<p class="muted">14-day refund on request, either product.</p>
+</div>
+
+<p>Something not arrived after 15 minutes? Open a delivery request with your PayPal transaction ID:</p>
 <a class="btn ghost" href="https://github.com/fejzadenis/leadflow/issues/new?title=LeadFlow%20delivery%20request">Request delivery</a>
 <a class="btn" href="docs.html">Read the setup docs</a>
 </div></body></html>
