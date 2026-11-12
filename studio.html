@@ -561,6 +561,19 @@ function lfTierForRows(total) {
   return null;
 }
 
+// The page already knows the buyer's row count and their tier, so it can hand them the exact checkout
+// for their own file instead of telling them to scroll to a card and pick the right button. Every link
+// carries the row count it was built from, so what arrives in the PayPal receipt is the quantity that
+// was agreed in the sentence right above it.
+function lfPayUrl(amount, rows) {
+  var item = 'LeadFlow CSV repair - ' + rows + ' rows ($' + amount + ' tier)';
+  return 'https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=dragana.karans%40gmail.com' +
+    '&item_name=' + encodeURIComponent(item) +
+    '&amount=' + amount + '.00&currency_code=USD' +
+    '&return=' + encodeURIComponent('https://fejzadenis.github.io/leadflow/thanks.html') +
+    '&cancel_return=' + encodeURIComponent('https://fejzadenis.github.io/leadflow/studio.html');
+}
+
 var LF_OUT = null;
 
 
@@ -625,7 +638,9 @@ function renderStudio() {
       'File: I will attach it after you reply\n';
     var tier = lfTierForRows(total);
     var tierLine = tier
-      ? '<b>Your file: ' + total + ' rows &rarr; the ' + esc(tier.label) + ' repair is the one that covers it</b> (card 3, same files, 24 hours).'
+      ? '<b>Your file: ' + total + ' rows &rarr; the ' + esc(tier.label) + ' repair covers it.</b> ' +
+        '<a href="' + lfPayUrl(tier.amount, total) + '" target="_blank" rel="noopener"><b>Pay ' + esc(tier.label) + ' and email this file</b></a>' +
+        ' &mdash; cleaned file plus the report back within 24 hours, 14-day refund.'
       : '<b>Your file: ' + total + ' rows, past the 100,000-row tier</b> &mdash; mail the row count first and the answer names a price before you pay.';
     ask.hidden = false;
     ask.innerHTML = 'If your import still rejects this file after cleaning, that is the one job rules cannot decide. ' +
