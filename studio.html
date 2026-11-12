@@ -90,8 +90,8 @@ a{color:#8fb7ff}
   <div class="btns">
     <a class="btn ghost" href="./">Or the n8n pack, if you do this every week</a>
   </div>
-  <p class="hint" style="margin-top:10px">How the handover works: pay for the tier that matches your file, then send the CSV to the address on your PayPal receipt; the cleaned file and the report come back to that same address, normally the same day. Nothing is uploaded to this page and nothing is stored here. Not sure which tier your file needs? Say the row count in that mail before paying - the answer is the tier you need, never a half-cleaned file.</p>
-  <p class="hint"><b>Before you pay, or if the button will not open:</b> write to <a href="mailto:dragana.karans@gmail.com?subject=CSV%20repair%20question">dragana.karans@gmail.com</a> and describe the file (row count and what your import says). A person answers, normally the same day - and if the file is something this repair cannot fix, the answer is no rather than a charge.</p>
+  <p class="hint" style="margin-top:10px">How the handover works: pay for the tier that matches your file, then email the CSV to <b>perun.intelligence@gmail.com</b> (printed again just below, and on the thank-you page); the cleaned file and the report come back to that same address, normally the same day. Nothing is uploaded to this page and nothing is stored here. Not sure which tier your file needs? Say the row count in that mail before paying - the answer is the tier you need, never a half-cleaned file.</p>
+  <p class="hint"><b>Before you pay, or if the button will not open:</b> write to <a href="mailto:perun.intelligence@gmail.com?subject=CSV%20repair%20question">perun.intelligence@gmail.com</a> and describe the file (row count and what your import says). A person answers, normally the same day - and if the file is something this repair cannot fix, the answer is no rather than a charge.</p>
 </div>
 
 <div class="card">
@@ -533,7 +533,7 @@ function lfWorkbookMessage(kind, fileName) {
     'Save it as CSV in three clicks: open it in Excel, <b>File &rarr; Save As</b>, choose <b>CSV UTF-8 (Comma delimited) (*.csv)</b>, then pick that file here. ' +
     'From Google Sheets: <b>File &rarr; Download &rarr; Comma-separated values (.csv, current sheet)</b>. ' +
     'If you would rather not touch it: mail the workbook to ' +
-    '<a href="mailto:dragana.karans@gmail.com?subject=LeadFlow%20-%20my%20workbook">dragana.karans@gmail.com</a> and converting it is part of the <b>$49</b> clean-up (up to 5,000 rows, back within 24h).';
+    '<a href="mailto:perun.intelligence@gmail.com?subject=LeadFlow%20-%20my%20workbook">perun.intelligence@gmail.com</a> and converting it is part of the <b>$49</b> clean-up (up to 5,000 rows, back within 24h).';
 }
 
 var LF_OUT = null;
@@ -600,7 +600,7 @@ function renderStudio() {
       'File: I will attach it after you reply\n';
     ask.hidden = false;
     ask.innerHTML = 'If your import still rejects this file after cleaning, that is the one job rules cannot decide. ' +
-      '<a href="mailto:dragana.karans@gmail.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body) + '">Send it to a person</a> ' +
+      '<a href="mailto:perun.intelligence@gmail.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body) + '">Send it to a person</a> ' +
       'with the error your import shows. The first answer is free; a repair is $49 for up to 5,000 rows, back within 24 hours. Nothing is attached until you attach it yourself.';
   }
 }
