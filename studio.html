@@ -60,7 +60,8 @@ a{color:#8fb7ff}
     <button id="d2" class="ghost" disabled>Download patterns CSV</button>
     <button id="d3" class="ghost" disabled>Download report</button>
   </div>
-  <p class="hint">Needs an <b>email</b> column &mdash; <i>Email</i>, <i>Email - Work</i> (Pipedrive) and <i>Work Email</i> (HubSpot) all count. Name, company and topic are used when present; <i>Firstname/Lastname</i>, <i>Organization</i> and <i>Note</i> are recognised too. Comma, semicolon and tab-separated files work, including a straight copy-paste from Excel or Google Sheets.</p>
+  <p class="hint">Needs an <b>email</b> column &mdash; <i>Email</i>, <i>Email - Work</i> (Pipedrive) and <i>Work Email</i> (HubSpot) all count. Name, company and topic are used when present; <i>Firstname/Lastname</i>, <i>Organization</i> and <i>Note</i> are recognised too. Comma, semicolon and tab-separated files work, including a straight copy-paste from Excel or Google Sheets. A file saved by Excel itself (UTF-8, UTF-16 or Windows-1250/1252) is decoded by its real encoding rather than guessed as UTF-8, and the cleaned CSV downloads with a BOM so Excel opens it without mangling names.</p>
+  <p class="hint" id="enc" hidden></p>
 </div>
 
 <div class="card">
@@ -448,6 +449,43 @@ function lfReport(result) {
   return lines.join('\n') + '\n';
 }
 
+// Bytes -> text, with the encoding chain the CLI demo already uses. A browser
+// that assumes UTF-8 renders a Serbian Excel export as "?or?e Milo?evi?" (and a
+// Polish, Czech or Hungarian one just as badly), then exports the wreckage. So:
+// BOM first, then strict UTF-8 (fatal, so it cannot silently pass), then the two
+// 8-bit codepages those Excel builds write. The label is shown to the visitor.
+function lfDecodeBytes(bytes) {
+  var b = bytes || [];
+  if (b.length >= 2 && b[0] === 0xff && b[1] === 0xfe) return { text: new TextDecoder('utf-16le').decode(b), encoding: 'utf-16le' };
+  if (b.length >= 2 && b[0] === 0xfe && b[1] === 0xff) return { text: new TextDecoder('utf-16be').decode(b), encoding: 'utf-16be' };
+  try {
+    return { text: new TextDecoder('utf-8', { fatal: true }).decode(b), encoding: 'utf-8' };
+  } catch (err) { /* not valid UTF-8 -> an 8-bit export from Excel */ }
+  var order = ['windows-1250', 'windows-1252'];
+  for (var i = 0; i < order.length; i++) {
+    try { return { text: new TextDecoder(order[i]).decode(b), encoding: order[i] }; } catch (err) { /* next */ }
+  }
+  return { text: new TextDecoder('latin1').decode(b), encoding: 'latin1' };
+}
+
+var LF_ENC_WHY = {
+  'utf-8': 'UTF-8',
+  'utf-16le': 'UTF-16 (Excel "Unicode text")',
+  'utf-16be': 'UTF-16 big-endian',
+  'windows-1250': 'Windows-1250 - the default of Excel on a Serbian/Central-European Windows',
+  'windows-1252': 'Windows-1252 - the default of Excel on a Western-European Windows',
+  'latin1': 'Latin-1 (last resort)'
+};
+
+// The download body, kept pure so it can be tested without a DOM.
+function lfFileBody(name, text) {
+  var isCsv = /\.csv$/i.test(String(name || ''));
+  return {
+    body: (isCsv ? '\uFEFF' : '') + String(text == null ? '' : text),
+    mime: (isCsv ? 'text/csv' : 'text/plain') + ';charset=utf-8'
+  };
+}
+
 var LF_OUT = null;
 
 function esc(s) {
@@ -455,7 +493,11 @@ function esc(s) {
 }
 
 function lfSave(name, text) {
-  var blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  // Excel on a European Windows reads a BOM-less UTF-8 CSV as its ANSI codepage,
+  // so a cleaned file would come back garbled when the buyer opens it. A CSV
+  // therefore leaves here UTF-8 WITH a BOM; the report stays plain UTF-8 text.
+  var file = lfFileBody(name, text);
+  var blob = new Blob([file.body], { type: file.mime });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
@@ -509,15 +551,39 @@ document.getElementById('sample').addEventListener('click', function () {
 document.getElementById('d1').addEventListener('click', function () { if (LF_OUT) lfSave('leadflow-cleaned.csv', lfCleanedCsv(LF_OUT)); });
 document.getElementById('d2').addEventListener('click', function () { if (LF_OUT) lfSave('leadflow-patterns.csv', lfPatternsCsv(LF_OUT)); });
 document.getElementById('d3').addEventListener('click', function () { if (LF_OUT) lfSave('leadflow-report.md', lfReport(LF_OUT)); });
+function lfShowEncoding(decoded, fileName) {
+  var el = document.getElementById('enc');
+  if (!el) return;
+  if (!decoded) {
+    el.hidden = false;
+    el.innerHTML = '<b class="bad">Could not read ' + esc(fileName) + '.</b> Try saving it from Excel as CSV again, or paste the rows into the box.';
+    return;
+  }
+  var label = LF_ENC_WHY[decoded.encoding] || decoded.encoding;
+  if (decoded.encoding === 'utf-8') {
+    el.hidden = false;
+    el.innerHTML = 'Read <b>' + esc(fileName) + '</b> as UTF-8 &mdash; characters intact.';
+    return;
+  }
+  el.hidden = false;
+  el.innerHTML = 'Read <b>' + esc(fileName) + '</b> as <b>' + esc(label) + '</b>. ' +
+    'A tool that assumes UTF-8 would have turned those names into question marks; they are intact here. ' +
+    'The cleaned file downloads as UTF-8 with a BOM, so Excel opens it correctly too.';
+}
+
 document.getElementById('file').addEventListener('change', function (ev) {
   var f = ev.target.files && ev.target.files[0];
   if (!f) return;
   var rd = new FileReader();
   rd.onload = function () {
-    document.getElementById('csv').value = String(rd.result || '');
+    var decoded = lfDecodeBytes(new Uint8Array(rd.result));
+    var text = String(decoded.text || '').replace(/^\uFEFF/, '');
+    document.getElementById('csv').value = text;
+    lfShowEncoding(decoded, f.name);
     renderStudio();
   };
-  rd.readAsText(f);
+  rd.onerror = function () { lfShowEncoding(null, f.name); };
+  rd.readAsArrayBuffer(f);
 });
 document.getElementById('csv').value = SAMPLE;
 renderStudio();
