@@ -107,12 +107,15 @@ function lfLatin(s) {
 }
 
 function lfDelimiter(line) {
-  var semi = 0, comma = 0;
+  var counts = { ',': 0, ';': 0, '\t': 0 }, q = false;
   for (var i = 0; i < line.length; i++) {
-    if (line.charAt(i) === ';') semi++;
-    if (line.charAt(i) === ',') comma++;
+    var c = line.charAt(i);
+    if (c === '"') { q = !q; continue; }
+    if (!q && counts[c] !== undefined) counts[c]++;
   }
-  return semi > comma ? ';' : ',';
+  var best = ',', n = 0;
+  ['\t', ';', ','].forEach(function (d) { if (counts[d] > n) { best = d; n = counts[d]; } });
+  return best;
 }
 
 function lfSplitLine(line, delim) {
@@ -130,6 +133,30 @@ function lfSplitLine(line, delim) {
   return out;
 }
 
+var LF_ALIAS = {
+  email: ['email', 'emailaddress', 'emailaddr', 'mail', 'email1', 'email2', 'workemail', 'businessemail', 'primaryemail', 'contactemail', 'emailwork', 'emailoffice', 'emailbusiness', 'emailpersonal'],
+  name: ['name', 'fullname', 'contactname', 'displayname', 'leadname', 'lead', 'contact', 'person'],
+  first: ['firstname', 'first', 'givenname', 'forename'],
+  last: ['lastname', 'last', 'surname', 'familyname'],
+  company: ['company', 'companyname', 'organization', 'organizationname', 'organisation', 'org', 'firma', 'account', 'accountname', 'employer'],
+  topic: ['topic', 'note', 'notes', 'reason', 'context']
+};
+
+function lfHeaderIndex(head, names) {
+  for (var n = 0; n < names.length; n++) {
+    var at = head.indexOf(names[n]);
+    if (at > -1) return at;
+  }
+  return -1;
+}
+
+function lfHeaderFuzzy(head, want, avoid) {
+  for (var i = 0; i < head.length; i++) {
+    if (want.test(head[i]) && !avoid.test(head[i])) return i;
+  }
+  return -1;
+}
+
 function lfKey(h) { return String(h || '').toLowerCase().replace(/[^a-z]/g, ''); }
 
 function lfParseCsv(text) {
@@ -138,15 +165,19 @@ function lfParseCsv(text) {
   var delim = lfDelimiter(lines[0]);
   var head = lfSplitLine(lines[0], delim).map(lfKey);
   var idx = { name: -1, first: -1, last: -1, email: -1, company: -1, topic: -1 };
-  head.forEach(function (h, i) {
-    if (h === 'name' || h === 'fullname' || h === 'lead' || h === 'contact') idx.name = i;
-    else if (h === 'firstname' || h === 'first') idx.first = i;
-    else if (h === 'lastname' || h === 'last' || h === 'surname') idx.last = i;
-    else if (h === 'email' || h === 'emailaddress' || h === 'mail') idx.email = i;
-    else if (h === 'company' || h === 'organization' || h === 'organisation' || h === 'org' || h === 'firma') idx.company = i;
-    else if (h === 'topic' || h === 'note' || h === 'notes' || h === 'reason') idx.topic = i;
-  });
-  if (idx.email === -1) throw new Error('CSV needs an email column. Found: ' + head.join(', '));
+  // Header names are not ours to choose: Pipedrive exports "Email - Work", HubSpot
+  // "Work Email", Sheets pastes arrive tab-separated. A tool that only accepts the
+  // word "email" blames the buyer's file for its own table.
+  Object.keys(LF_ALIAS).forEach(function (k) { idx[k] = lfHeaderIndex(head, LF_ALIAS[k]); });
+  if (idx.email === -1) idx.email = lfHeaderFuzzy(head, /email|mail/, /status|valid|verified|sent|bounce|opt|count|date|source/);
+  if (idx.name === -1) idx.name = lfHeaderFuzzy(head, /^name|fullname|contactname/, /company|account|domain|file|user|last|first/);
+  if (idx.first === -1) idx.first = lfHeaderFuzzy(head, /firstname|givenname/, /last/);
+  if (idx.last === -1) idx.last = lfHeaderFuzzy(head, /lastname|surname|familyname/, /first/);
+  if (idx.company === -1) idx.company = lfHeaderFuzzy(head, /company|organization|organisation|employer/, /domain|email|file/);
+  if (idx.email === -1) {
+    throw new Error('No email column found. Headers seen: ' + head.join(', ') +
+      '. Rename the address column to "email" (or use "Email - Work" / "Work Email") and try again.');
+  }
   var rows = [];
   for (var n = 1; n < lines.length; n++) {
     var cells = lfSplitLine(lines[n], delim);
