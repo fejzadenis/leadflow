@@ -125,9 +125,13 @@ function lfSplitLine(line, delim) {
 
 var LF_ALIAS = {
   email: ['email', 'emailaddress', 'emailaddr', 'mail', 'email1', 'email2', 'workemail', 'businessemail', 'primaryemail', 'contactemail', 'emailwork', 'emailoffice', 'emailbusiness', 'emailpersonal'],
-  name: ['name', 'fullname', 'contactname', 'displayname', 'leadname', 'lead', 'contact', 'person'],
-  first: ['firstname', 'first', 'givenname', 'forename'],
-  last: ['lastname', 'last', 'surname', 'familyname'],
+  name: ['name', 'fullname', 'contactname', 'displayname', 'leadname', 'lead', 'contact', 'person',
+    'imeprezime', 'imeiprezime', 'nombre', 'nome', 'nom'],
+  // A Serbian/European Excel export says "Ime" and "Prezime", not "First name" and "Last name".
+  // Measured 2026-11-12: on "Ime;E-mail adresa;Firma" every delivered row had an empty name, so
+  // the buyer's list lost the one column they actually read.
+  first: ['firstname', 'first', 'givenname', 'forename', 'ime', 'vorname', 'nombre'],
+  last: ['lastname', 'last', 'surname', 'familyname', 'prezime', 'nachname', 'apellido'],
   company: ['company', 'companyname', 'organization', 'organizationname', 'organisation', 'org', 'firma', 'account', 'accountname', 'employer'],
   topic: ['topic', 'note', 'notes', 'reason', 'context']
 };
@@ -149,11 +153,69 @@ function lfHeaderFuzzy(head, want, avoid) {
 
 function lfKey(h) { return String(h || '').toLowerCase().replace(/[^a-z]/g, ''); }
 
+// One record can span several physical lines: a quoted note from HubSpot or Pipedrive
+// ("Called 10.11. + newline + Asked for pricing") used to be split on the newline. Measured
+// 2026-11-12 on a 2-row export with one such note: the note was truncated AND two phantom
+// rows appeared in the delivery report, so the buyer was told two rows were "removed" that
+// never existed in their file.
+function lfCsvRecords(text, delim) {
+  var s = String(text || '').replace(/\r\n?/g, '\n');
+  var out = [], cells = [], cur = '', q = false;
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charAt(i);
+    if (q) {
+      if (c === '"') { if (s.charAt(i + 1) === '"') { cur += '"'; i++; } else { q = false; } }
+      else { cur += c; }
+    } else if (c === '"') { q = true; }
+    else if (c === delim) { cells.push(cur); cur = ''; }
+    else if (c === '\n') { cells.push(cur); out.push(cells); cells = []; cur = ''; }
+    else { cur += c; }
+  }
+  cells.push(cur);
+  out.push(cells);
+  return out.filter(function (r) {
+    return r.some(function (v) { return String(v).trim() !== ''; });
+  });
+}
+
+// The delimiter is whichever one makes the file look like a table: the same column count on
+// most records. A comma-CSV whose note cells contain semicolons wins on ',' and loses on ';',
+// and a Serbian/European Excel export (semicolon-separated) wins the other way round.
+function lfPickDelimiter(text) {
+  var best = ',', bestScore = -1;
+  [',', ';', '\t'].forEach(function (d) {
+    var recs = lfCsvRecords(text, d);
+    if (!recs.length) return;
+    var counts = {}, modal = 0, modalCount = 0;
+    recs.forEach(function (r) {
+      var n = r.length;
+      counts[n] = (counts[n] || 0) + 1;
+      if (counts[n] > modalCount) { modalCount = counts[n]; modal = n; }
+    });
+    if (modal < 2) return;
+    var score = (modal - 1) * (modalCount / recs.length);
+    if (score > bestScore) { bestScore = score; best = d; }
+  });
+  return best;
+}
+
 function lfParseCsv(text) {
-  var lines = String(text || '').replace(/\r\n?/g, '\n').split('\n').filter(function (l) { return l.trim() !== ''; });
-  if (!lines.length) return [];
-  var delim = lfDelimiter(lines[0]);
-  var head = lfSplitLine(lines[0], delim).map(lfKey);
+  var body = String(text || '');
+  var delim = lfPickDelimiter(body);
+  var recs = lfCsvRecords(body, delim);
+  if (!recs.length) return [];
+  // Real exports arrive with a title above the header ("Kontakti iz Pipedrive",
+  // "Izvezeno 10.11.2026. ; filter: svi" - an Excel report is the normal case, not the
+  // exception). Taking record 0 as the header failed the entire order with "No email
+  // column found" on a file whose header simply sat one line lower, so the header is now
+  // the first record that looks like one.
+  var at = 0;
+  for (var hr = 0; hr < Math.min(recs.length, 20); hr++) {
+    if (recs[hr].length < 2) continue;
+    var hk = recs[hr].map(lfKey);
+    if (hk.some(function (k) { return k.indexOf('email') > -1 || k.indexOf('mail') > -1; })) { at = hr; break; }
+  }
+  var head = recs[at].map(lfKey);
   var idx = { name: -1, first: -1, last: -1, email: -1, company: -1, topic: -1 };
   // Header names are not ours to choose: Pipedrive exports "Email - Work", HubSpot
   // "Work Email", Sheets pastes arrive tab-separated. A tool that only accepts the
@@ -169,8 +231,8 @@ function lfParseCsv(text) {
       '. Rename the address column to "email" (or use "Email - Work" / "Work Email") and try again.');
   }
   var rows = [];
-  for (var n = 1; n < lines.length; n++) {
-    var cells = lfSplitLine(lines[n], delim);
+  for (var n = at + 1; n < recs.length; n++) {
+    var cells = recs[n];
     var name = idx.name > -1 ? cells[idx.name] : '';
     if (!String(name || '').trim() && (idx.first > -1 || idx.last > -1)) {
       name = [idx.first > -1 ? cells[idx.first] : '', idx.last > -1 ? cells[idx.last] : ''].join(' ');
@@ -206,13 +268,26 @@ function lfReorderName(raw) {
   return a.join(' ') + ' ' + b.join(' ');
 }
 
+// Non-ASCII letters that NFD does not decompose (Balkan đ/Đ, Nordic ø/æ, German ß, Polish ł ...).
+var LF_FOLD = { 'đ': 'dj', 'ð': 'd', 'ø': 'o', 'æ': 'ae', 'ß': 'ss', 'ł': 'l', 'þ': 'th', 'ı': 'i', 'œ': 'oe', 'ħ': 'h', 'ŧ': 't', 'ĸ': 'k' };
+function lfFoldEmail(s) {
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đðøæßłþıœħŧĸ]/g, function (c) { return LF_FOLD[c] || c; })
+    .replace(/[^a-z0-9@._%+\-]/g, '');
+}
+
 function lfClean(rows) {
-  var seen = {}, leads = [], rejected = [];
+  var seen = {}, leads = [], rejected = [], folded = [];
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i] || {};
     var displayName = lfReorderName(row.name);
     var raw = String(row.email || '');
     var email = raw.replace(/\s+/g, '').toLowerCase().replace(/^@+/, '').replace(/@+$/, '@');
+    var ascii = lfFoldEmail(email);
+    if (ascii !== email) {
+      folded.push({ from: email, to: ascii, name: displayName });
+      email = ascii;
+    }
     var parts = email.split('@');
     if (!email || parts.length !== 2 || !parts[0] || !parts[1]) {
       rejected.push({ name: displayName, reason: 'no usable email: "' + raw.trim() + '"' });
@@ -238,7 +313,7 @@ function lfClean(rows) {
       topic: String(row.topic || '').trim()
     });
   }
-  return { leads: leads, rejected: rejected };
+  return { leads: leads, rejected: rejected, folded: folded };
 }
 
 function lfPatterns(leads) {
@@ -292,6 +367,7 @@ function lfRun(rows) {
   return {
     leads: drafted,
     rejected: cleaned.rejected,
+    folded: cleaned.folded || [],
     summary: {
       credentials_used: 'none',
       network_calls_made: 0,
