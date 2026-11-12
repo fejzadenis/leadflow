@@ -51,7 +51,7 @@ a{color:#8fb7ff}
   <div class="lbl">1 - Your lead CSV (paste it, or pick a file)</div>
   <textarea id="csv" spellcheck="false" placeholder="name,email,company,topic&#10;Marko Petrovic,marko@petroco.rs,PetroCo,invoice reminders"></textarea>
   <div class="btns">
-    <input type="file" id="file" accept=".csv,.txt,text/csv,text/plain">
+    <input type="file" id="file" accept=".csv,.txt,.xlsx,.xls,.ods,text/csv,text/plain">
     <button id="sample" class="ghost">Load sample</button>
   </div>
   <div class="btns">
@@ -60,6 +60,7 @@ a{color:#8fb7ff}
     <button id="d2" class="ghost" disabled>Download patterns CSV</button>
     <button id="d3" class="ghost" disabled>Download report</button>
   </div>
+  <p class="hint" id="bookhint">An <b>.xlsx / .xls</b> workbook is not a CSV (it is a zip of XML parts) - if you pick one, this page tells you how to save it as CSV in three clicks instead of pretending to read it.</p>
   <p class="hint">Needs an <b>email</b> column &mdash; <i>Email</i>, <i>Email - Work</i> (Pipedrive) and <i>Work Email</i> (HubSpot) all count. Name, company and topic are used when present; <i>Firstname/Lastname</i>, <i>Organization</i> and <i>Note</i> are recognised too. Comma, semicolon and tab-separated files work, including a straight copy-paste from Excel or Google Sheets. A file saved by Excel itself (UTF-8, UTF-16 or Windows-1250/1252) is decoded by its real encoding rather than guessed as UTF-8, and the cleaned CSV downloads with a BOM so Excel opens it without mangling names.</p>
   <p class="hint" id="enc" hidden></p>
 </div>
@@ -503,11 +504,39 @@ function lfFileBody(name, text) {
   };
 }
 
-var LF_OUT = null;
-
 function esc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+
+// A workbook is not a CSV, and on 2026-11-12 this page treated one as text: an .xlsx dropped
+// here was decoded as Windows-1250 zip bytes and answered "No email column found. Headers seen:
+// pk" - advice about a column that was never the problem, on the first surface a non-technical
+// buyer touches, for the file format their export most often arrives in. The container is named
+// instead of parsed, because Excel can convert it in three clicks and we cannot read it at all.
+function lfSniffWorkbook(bytes, name) {
+  var b = bytes || [];
+  var ext = String(name || '').toLowerCase().replace(/^.*\./, '');
+  if (b.length >= 4 && b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04) {
+    return ext === 'ods' ? 'ods' : 'xlsx';
+  }
+  if (b.length >= 8 && b[0] === 0xd0 && b[1] === 0xcf && b[2] === 0x11 && b[3] === 0xe0) return 'xls';
+  return null;
+}
+
+function lfWorkbookMessage(kind, fileName) {
+  var noun = kind === 'xls' ? 'an Excel 97-2003 workbook (.xls)'
+    : kind === 'ods' ? 'an OpenDocument spreadsheet (.ods)'
+    : 'an Excel workbook (.xlsx)';
+  return '<b class="bad">' + esc(fileName) + ' is ' + noun + ', not a CSV.</b> ' +
+    'A workbook is a zip of XML parts, so no CSV reader can open it - read as text it can only ever come out as gibberish. ' +
+    'Save it as CSV in three clicks: open it in Excel, <b>File &rarr; Save As</b>, choose <b>CSV UTF-8 (Comma delimited) (*.csv)</b>, then pick that file here. ' +
+    'From Google Sheets: <b>File &rarr; Download &rarr; Comma-separated values (.csv, current sheet)</b>. ' +
+    'If you would rather not touch it: mail the workbook to ' +
+    '<a href="mailto:dragana.karans@gmail.com?subject=LeadFlow%20-%20my%20workbook">dragana.karans@gmail.com</a> and converting it is part of the <b>$49</b> clean-up (up to 5,000 rows, back within 24h).';
+}
+
+var LF_OUT = null;
+
 
 function lfSave(name, text) {
   // Excel on a European Windows reads a BOM-less UTF-8 CSV as its ANSI codepage,
@@ -593,7 +622,19 @@ document.getElementById('file').addEventListener('change', function (ev) {
   if (!f) return;
   var rd = new FileReader();
   rd.onload = function () {
-    var decoded = lfDecodeBytes(new Uint8Array(rd.result));
+    var bytes = new Uint8Array(rd.result);
+    var kind = lfSniffWorkbook(bytes, f.name);
+    if (kind) {
+      LF_OUT = null;
+      document.getElementById('csv').value = '';
+      document.getElementById('summary').innerHTML = '<p class="hint">Nothing run: a workbook was picked, not a CSV.</p>';
+      document.getElementById('rejected').innerHTML = '';
+      ['d1', 'd2', 'd3'].forEach(function (id) { document.getElementById(id).disabled = true; });
+      var box = document.getElementById('enc');
+      if (box) { box.hidden = false; box.innerHTML = lfWorkbookMessage(kind, f.name); }
+      return;
+    }
+    var decoded = lfDecodeBytes(bytes);
     var text = String(decoded.text || '').replace(/^\uFEFF/, '');
     document.getElementById('csv').value = text;
     lfShowEncoding(decoded, f.name);
