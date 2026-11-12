@@ -60,7 +60,7 @@ a{color:var(--accent)}
 <li>Connect it so the file arrives as the binary property <code>data</code> - the output of <i>Read/Write Files from Disk</i> or a Google Drive <i>Download</i>.</li>
 <li>Leave the following CSV node on the same binary property. It now reads valid UTF-8.</li>
 </ol>
-<pre class="n8n-code" data-sha="47255d8c1f1dc52b20c2435584abe1bb9b94bc0bb959545c2635ddce2c5dd089"><code>// wf01-decode-node.js - source for the "Decode CSV bytes" Code node of the PAID pack's
+<pre class="n8n-code" data-sha="3639644e5c9d885aa0d779fee4d5ab2eeaecc05996fc937f910bf84d29385cf9"><code>// wf01-decode-node.js - source for the "Decode CSV bytes" Code node of the PAID pack's
 // workflow 01 (CSV -&gt; Google Sheets). Not executed directly: sales/make-wf01-encoding.mjs
 // inlines this file into workflows/01-lead-import-csv.json, replacing \u20ac\u0081\u201a\u0083\u201e\u2026\u2020\u2021\u0088\u2030\u0160\u2039\u015a\u0164\u017d\u0179\u0090\u2018\u2019\u201c\u201d\u2022\u2013\u2014\u0098\u2122\u0161\u203a\u015b\u0165\u017e\u017a\u00a0\u02c7\u02d8\u0141\u00a4\u0104\u00a6\u00a7\u00a8\u00a9\u015e\u00ab\u00ac\u00ad\u00ae\u017b\u00b0\u00b1\u02db\u0142\u00b4\u00b5\u00b6\u00b7\u00b8\u0105\u015f\u00bb\u013d\u02dd\u013e\u017c\u0154\u00c1\u00c2\u0102\u00c4\u0139\u0106\u00c7\u010c\u00c9\u0118\u00cb\u011a\u00cd\u00ce\u010e\u0110\u0143\u0147\u00d3\u00d4\u0150\u00d6\u00d7\u0158\u016e\u00da\u0170\u00dc\u00dd\u0162\u00df\u0155\u00e1\u00e2\u0103\u00e4\u013a\u0107\u00e7\u010d\u00e9\u0119\u00eb\u011b\u00ed\u00ee\u010f\u0111\u0144\u0148\u00f3\u00f4\u0151\u00f6\u00f7\u0159\u016f\u00fa\u0171\u00fc\u00fd\u0163\u02d9 with
 // the Windows-1250 upper half escaped as U+ hex codes, so no encoding pass can corrupt it.
@@ -203,16 +203,113 @@ function decodeBytes(b) {
   return { text: cp1250Decode(b), encoding: "Windows-1250" };
 }
 
+// --- a banner row above the header -------------------------------------------
+// Exports often start with a line that is not the header: a blank line, Excel's
+// "sep=," directive, or a title such as "Export leadova 12.11.2026". The CSV
+// parser downstream treats the FIRST line as the header, so one banner line makes
+// every column unrecognised and the run stops with "no address column" on a file
+// that is perfectly fine. The whole text is available here, before parsing, so
+// leading lines that cannot be a header are dropped - and a one-field line is only
+// dropped when a later line in the same file really does look like a multi-column
+// header, so a single-column file is never touched. What was dropped is reported
+// on the item as lfSkippedBanner.
+
+// Quote-aware line split: a newline inside a quoted cell does not end the line.
+function splitLines(text) {
+  const lines = [];
+  let cur = "";
+  let inQ = false;
+  for (let i = 0; i &lt; text.length; i++) {
+    const ch = text.charAt(i);
+    if (ch === '"') {
+      if (inQ &amp;&amp; text.charAt(i + 1) === '"') { cur += '""'; i++; continue; }
+      inQ = !inQ;
+      cur += ch;
+      continue;
+    }
+    if ((ch === "\n" || ch === "\r") &amp;&amp; !inQ) {
+      if (ch === "\r" &amp;&amp; text.charAt(i + 1) === "\n") i++;
+      lines.push(cur);
+      cur = "";
+      continue;
+    }
+    cur += ch;
+  }
+  lines.push(cur);
+  return lines;
+}
+
+function countFields(line, delim) {
+  let n = 1;
+  let inQ = false;
+  for (let i = 0; i &lt; line.length; i++) {
+    const ch = line.charAt(i);
+    if (ch === '"') {
+      if (inQ &amp;&amp; line.charAt(i + 1) === '"') { i++; continue; }
+      inQ = !inQ;
+      continue;
+    }
+    if (!inQ &amp;&amp; ch === delim) n++;
+  }
+  return n;
+}
+
+function detectDelimiter(lines) {
+  const score = {};
+  let best = ",";
+  let bestCount = 0;
+  for (let d = 0; d &lt; 4; d++) score[d] = 0;
+  const candidates = [",", ";", "\t", "|"];
+  let seen = 0;
+  for (let i = 0; i &lt; lines.length &amp;&amp; seen &lt; 6; i++) {
+    if (!/\S/.test(lines[i])) continue;
+    seen++;
+    for (let d = 0; d &lt; candidates.length; d++) {
+      score[d] += countFields(lines[i], candidates[d]) - 1;
+    }
+  }
+  for (let d = 0; d &lt; candidates.length; d++) {
+    if (score[d] &gt; bestCount) { bestCount = score[d]; best = candidates[d]; }
+  }
+  return best;
+}
+
+function stripBanner(text) {
+  const lines = splitLines(text);
+  const delim = detectDelimiter(lines);
+  const dropped = [];
+  let at = 0;
+  while (at &lt; lines.length &amp;&amp; at &lt; 3) {
+    const line = lines[at];
+    if (!/\S/.test(line)) { dropped.push("(blank line)"); at = at + 1; continue; }
+    // Excel's own directive ("sep=," / "sep=;") is one line, not a header - and it
+    // contains a delimiter, so field counting alone would mistake it for one.
+    if (/^sep=.$/i.test(line.replace(/^[ \t]+|[ \t]+$/g, ""))) { dropped.push(line.slice(0, 60)); at = at + 1; continue; }
+    if (countFields(line, delim) &gt; 1) break;
+    let headerAfter = 0;
+    for (let k = at + 1; k &lt; lines.length &amp;&amp; k &lt; at + 5; k++) {
+      if (countFields(lines[k], delim) &gt; 1) { headerAfter = k; break; }
+    }
+    if (!headerAfter) break;
+    dropped.push(line.slice(0, 60));
+    at = at + 1;
+  }
+  if (!at) return { text: text, dropped: [] };
+  return { text: lines.slice(at).join("\n"), dropped: dropped };
+}
+
 return items.map(function (item) {
   const bin = item.binary &amp;&amp; item.binary.data;
   if (!bin || typeof bin.data !== "string") {
     throw new Error("Decode CSV bytes: no file on the incoming item. Connect a Read/Write File node first, so the file arrives as the binary property data.");
   }
   const decoded = decodeBytes(b64ToBytes(bin.data));
-  const utf8 = utf8Encode(decoded.text);
+  const cleaned = stripBanner(decoded.text);
+  const utf8 = utf8Encode(cleaned.text);
   const json = {};
   Object.keys(item.json || {}).forEach(function (k) { json[k] = item.json[k]; });
   json.lfEncoding = decoded.encoding;
+  if (cleaned.dropped.length) json.lfSkippedBanner = cleaned.dropped.join(" | ");
   const binary = {};
   Object.keys(item.binary || {}).forEach(function (k) { binary[k] = item.binary[k]; });
   binary.data = {};
