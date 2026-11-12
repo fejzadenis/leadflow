@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LeadFlow Studio - clean a lead CSV offline and take the files with you</title>
+<meta name="description" content="Drop a lead CSV in and get a cleaned file, candidate email patterns and a written reason for every rejected row. Runs in your browser: no install, no upload, no account, no network.">
+<link rel="canonical" href="https://fejzadenis.github.io/leadflow/studio.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="LeadFlow">
+<meta property="og:url" content="https://fejzadenis.github.io/leadflow/studio.html">
+<meta property="og:title" content="LeadFlow Studio - clean a lead CSV offline, keep the files">
+<meta property="og:description" content="Cleaned CSV, email patterns and a written reason for every rejected row. No install, no upload, no network.">
+<meta property="og:image" content="https://fejzadenis.github.io/leadflow/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://fejzadenis.github.io/leadflow/og.png">
+<style>
+:root{--bg:#0b0f14;--card:#131a22;--text:#e6edf3;--muted:#8b98a9;--accent:#4f8cff;--green:#2ea043;--red:#d9534f;--border:#22303c}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;padding:28px 18px 60px}
+.wrap{max-width:1040px;margin:0 auto}
+h1{font-size:27px;line-height:1.25;letter-spacing:-.3px;margin-top:12px}
+h1 span{color:var(--accent)}
+.sub{color:var(--muted);font-size:14.5px;margin-top:10px;max-width:760px}
+.badge{display:inline-block;font-size:11px;letter-spacing:1.1px;text-transform:uppercase;color:#b9d0ff;border:1px solid rgba(79,140,255,.45);background:rgba(79,140,255,.12);border-radius:999px;padding:4px 10px;margin-right:6px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-top:18px}
+.lbl{font-size:11.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+textarea{width:100%;min-height:150px;background:#0e141b;color:var(--text);border:1px solid var(--border);border-radius:9px;padding:12px;font-family:Consolas,ui-monospace,monospace;font-size:12.5px;line-height:1.45;resize:vertical}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center}
+button{font-family:inherit;font-size:14px;font-weight:600;border:0;border-radius:9px;padding:11px 18px;background:var(--accent);color:#fff;cursor:pointer}
+button.ghost{background:transparent;border:1px solid var(--border);color:var(--text);font-weight:500}
+button:disabled{opacity:.45;cursor:not-allowed}
+input[type=file]{color:var(--muted);font-size:12.5px;max-width:100%}
+.stat{display:inline-block;margin:8px 18px 0 0;font-size:13px;color:var(--muted)}
+.stat b{display:block;font-size:22px;color:var(--text);line-height:1.1}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+th{text-align:left;color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;padding:6px 8px;border-bottom:1px solid var(--border)}
+td{padding:7px 8px;border-bottom:1px solid rgba(34,48,60,.55);vertical-align:top}
+.mono{font-family:Consolas,ui-monospace,monospace;font-size:12px}
+.hint{color:var(--muted);font-size:13px;margin-top:8px}
+.foot{color:var(--muted);font-size:12.5px;margin-top:22px;line-height:1.7}
+a{color:#8fb7ff}
+.cta{border:1px solid rgba(79,140,255,.45);background:rgba(79,140,255,.08)}
+.cta a.btn{display:inline-block;margin-top:10px;text-decoration:none;border-radius:9px;padding:11px 18px;background:var(--accent);color:#fff;font-weight:600;font-size:14px}
+</style></head><body><div class="wrap">
+<span class="badge">runs offline</span><span class="badge">nothing uploaded</span><span class="badge">no account</span>
+<h1>LeadFlow Studio: clean a whole CSV and <span>keep the files</span></h1>
+<p class="sub">The demo shows numbers on screen. This page gives you the output: a cleaned CSV to import, the candidate patterns in their own file, and a written reason for every row it rejected. Everything runs in this tab - your data never leaves the browser and the page makes no network request.</p>
+
+<div class="card">
+  <div class="lbl">1 - Your lead CSV (paste it, or pick a file)</div>
+  <textarea id="csv" spellcheck="false" placeholder="name,email,company,topic&#10;Marko Petrovic,marko@petroco.rs,PetroCo,invoice reminders"></textarea>
+  <div class="btns">
+    <input type="file" id="file" accept=".csv,.txt,text/csv,text/plain">
+    <button id="sample" class="ghost">Load sample</button>
+  </div>
+  <div class="btns">
+    <button id="run">Clean &amp; build the files</button>
+    <button id="d1" class="ghost" disabled>Download cleaned CSV</button>
+    <button id="d2" class="ghost" disabled>Download patterns CSV</button>
+    <button id="d3" class="ghost" disabled>Download report</button>
+  </div>
+  <p class="hint">Needs an <b>email</b> column. Name, company and topic are used when present; <i>Firstname/Lastname</i>, <i>Organization</i> and <i>Note</i> are recognised too. Semicolon exports work.</p>
+</div>
+
+<div class="card">
+  <div class="lbl">2 - What came out</div>
+  <div id="summary"><p class="hint">Nothing run yet.</p></div>
+  <div id="rejected"></div>
+</div>
+
+<div class="card cta">
+  <div class="lbl">3 - If this is the useful part</div>
+  <p class="sub" style="margin-top:0">This page is a single pass with no memory and no Google Sheets. The pack is the four importable n8n workflows - webhook intake, dedupe inside the sheet, optional AI draft, Sheets logging - plus the first-run guide and the troubleshooting page built from real buyer failures. Launch price $49, 14-day refund on request.</p>
+  <a class="btn" href="./">See what is in the pack</a>
+</div>
+
+<p class="foot"><b>Honest limits:</b> patterns are candidates, not verified addresses - you confirm each one before sending. Nothing is sent and nothing is stored; closing the tab discards everything. This tool dedupes inside one file only - it does not read rows already in a spreadsheet. The draft text is a template, not AI.</p>
+</div>
+<script>
+/*<ENGINE>*/
+var LF_FOLD = { '\u00e4':'ae','\u00f6':'oe','\u00fc':'ue','\u0111':'dj','\u00f8':'o','\u0142':'l','\u00df':'ss','\u00e6':'ae','\u0153':'oe','\u00fe':'th','\u00f0':'d','\u0131':'i' };
+
+function lfLatin(s) {
+  return String(s || '').toLowerCase().split('').map(function (c) {
+    return LF_FOLD[c] === undefined ? c : LF_FOLD[c];
+  }).join('').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]/g, '');
+}
+
+function lfDelimiter(line) {
+  var semi = 0, comma = 0;
+  for (var i = 0; i < line.length; i++) {
+    if (line.charAt(i) === ';') semi++;
+    if (line.charAt(i) === ',') comma++;
+  }
+  return semi > comma ? ';' : ',';
+}
+
+function lfSplitLine(line, delim) {
+  var out = [], cur = '', q = false;
+  for (var i = 0; i < line.length; i++) {
+    var c = line.charAt(i);
+    if (q) {
+      if (c === '"') { if (line.charAt(i + 1) === '"') { cur += '"'; i++; } else { q = false; } }
+      else { cur += c; }
+    } else if (c === '"') { q = true; }
+    else if (c === delim) { out.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  out.push(cur);
+  return out;
+}
+
+function lfKey(h) { return String(h || '').toLowerCase().replace(/[^a-z]/g, ''); }
+
+function lfParseCsv(text) {
+  var lines = String(text || '').replace(/\r\n?/g, '\n').split('\n').filter(function (l) { return l.trim() !== ''; });
+  if (!lines.length) return [];
+  var delim = lfDelimiter(lines[0]);
+  var head = lfSplitLine(lines[0], delim).map(lfKey);
+  var idx = { name: -1, first: -1, last: -1, email: -1, company: -1, topic: -1 };
+  head.forEach(function (h, i) {
+    if (h === 'name' || h === 'fullname' || h === 'lead' || h === 'contact') idx.name = i;
+    else if (h === 'firstname' || h === 'first') idx.first = i;
+    else if (h === 'lastname' || h === 'last' || h === 'surname') idx.last = i;
+    else if (h === 'email' || h === 'emailaddress' || h === 'mail') idx.email = i;
+    else if (h === 'company' || h === 'organization' || h === 'organisation' || h === 'org' || h === 'firma') idx.company = i;
+    else if (h === 'topic' || h === 'note' || h === 'notes' || h === 'reason') idx.topic = i;
+  });
+  if (idx.email === -1) throw new Error('CSV needs an email column. Found: ' + head.join(', '));
+  var rows = [];
+  for (var n = 1; n < lines.length; n++) {
+    var cells = lfSplitLine(lines[n], delim);
+    var name = idx.name > -1 ? cells[idx.name] : '';
+    if (!String(name || '').trim() && (idx.first > -1 || idx.last > -1)) {
+      name = [idx.first > -1 ? cells[idx.first] : '', idx.last > -1 ? cells[idx.last] : ''].join(' ');
+    }
+    rows.push({
+      name: name || '',
+      email: idx.email > -1 ? (cells[idx.email] || '') : '',
+      company: idx.company > -1 ? (cells[idx.company] || '') : '',
+      topic: idx.topic > -1 ? (cells[idx.topic] || '') : ''
+    });
+  }
+  return rows;
+}
+
+var LF_NAME_WORD = /^[A-Za-zÀ-ɏ'’.-]+$/;
+
+// Exports written in "Lastname, Firstname" order (common in Balkan/EU sheets) used to be split
+// left-to-right, which produced reversed patterns: petrovic.marko@ instead of marko.petrovic@.
+// Swap only when both sides look like a person, never for "Prima, Inc." style company cells.
+var LF_ORG_TAIL = /^(inc|ltd|llc|gmbh|corp|co|plc|ag|sa|srl|spa|bv|nv|oy|ab|kg|ug|doo|holding|group|partners|studio|agency|labs|team|solutions)$/i;
+
+function lfReorderName(raw) {
+  var s = String(raw || '').trim().replace(/ +/g, ' ');
+  var i = s.indexOf(',');
+  if (i < 1) return s;
+  var before = s.slice(0, i).trim(), after = s.slice(i + 1).trim();
+  if (!before || !after) return s;
+  var b = before.split(' ').filter(Boolean), a = after.split(' ').filter(Boolean);
+  if (!b.length || b.length > 3 || !a.length || a.length > 2) return s;
+  var all = b.concat(a);
+  for (var k = 0; k < all.length; k++) if (!LF_NAME_WORD.test(all[k])) return s;
+  if (LF_ORG_TAIL.test(a[a.length - 1].replace(/[.]/g, ''))) return s;
+  return a.join(' ') + ' ' + b.join(' ');
+}
+
+function lfClean(rows) {
+  var seen = {}, leads = [], rejected = [];
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i] || {};
+    var displayName = lfReorderName(row.name);
+    var raw = String(row.email || '');
+    var email = raw.replace(/\s+/g, '').toLowerCase().replace(/^@+/, '').replace(/@+$/, '@');
+    var parts = email.split('@');
+    if (!email || parts.length !== 2 || !parts[0] || !parts[1]) {
+      rejected.push({ name: displayName, reason: 'no usable email: "' + raw.trim() + '"' });
+      continue;
+    }
+    if (!/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$/.test(parts[1])) {
+      rejected.push({ name: displayName, reason: 'invalid domain: "' + parts[1] + '"' });
+      continue;
+    }
+    if (seen[email]) {
+      rejected.push({ name: displayName, reason: 'duplicate of existing lead (' + email + ')' });
+      continue;
+    }
+    seen[email] = true;
+    var words = displayName.split(' ').filter(Boolean);
+    leads.push({
+      full_name: displayName,
+      first_name: words[0] || '',
+      last_name: words.slice(1).join(' '),
+      email: email,
+      domain: parts[1],
+      company: String(row.company || '').trim(),
+      topic: String(row.topic || '').trim()
+    });
+  }
+  return { leads: leads, rejected: rejected };
+}
+
+function lfPatterns(leads) {
+  return leads.map(function (l) {
+    var first = lfLatin(l.first_name), last = lfLatin(l.last_name);
+    var local = [];
+    if (first && last) local.push(first + '.' + last, first + last, first.charAt(0) + '.' + last, first.charAt(0) + last, first);
+    else if (first) local.push(first);
+    else if (last) local.push(last);
+    var uniq = [], seen = {};
+    local.forEach(function (p) {
+      if (seen[p] || p.charAt(0) === '.' || p.charAt(p.length - 1) === '.') return;
+      seen[p] = true;
+      uniq.push(p);
+    });
+    return Object.assign({}, l, {
+      email_patterns: uniq.map(function (p) { return p + '@' + l.domain; }),
+      pattern_count: uniq.length
+    });
+  });
+}
+
+function lfDraft(leads) {
+  return leads.map(function (l) {
+    var first = l.first_name || 'there';
+    var company = l.company || 'your team';
+    var topic = l.topic || 'your current process';
+    var subject = topic + ' at ' + company + ' - one question';
+    var body = [
+      'Hi ' + first + ',', '',
+      'I saw ' + company + ' and wanted to ask about ' + topic + ' - is that still handled by hand?', '',
+      'I put together four n8n workflows that take a lead CSV or webhook and turn it into a cleaned, deduped list with drafted first-touch emails. They install in about 15 minutes and never send anything on their own.', '',
+      'Worth a look, or has ' + company + ' already solved this?', '',
+      'Best,', '[your name]'
+    ].join('\n');
+    return Object.assign({}, l, {
+      draft_subject: subject,
+      draft_body: body,
+      draft_words: body.split(/\s+/).filter(Boolean).length,
+      must_review_before_sending: true
+    });
+  });
+}
+
+function lfRun(rows) {
+  var cleaned = lfClean(rows);
+  var patterned = lfPatterns(cleaned.leads);
+  var drafted = lfDraft(patterned);
+  var patterns = 0;
+  drafted.forEach(function (l) { patterns += l.pattern_count || 0; });
+  return {
+    leads: drafted,
+    rejected: cleaned.rejected,
+    summary: {
+      credentials_used: 'none',
+      network_calls_made: 0,
+      leads_clean: drafted.length,
+      patterns_generated: patterns,
+      drafts_written: drafted.length,
+      emails_sent: 0
+    }
+  };
+}
+/*</ENGINE>*/
+
+/*<STUDIO>*/
+var SAMPLE = [
+  'name,email,company,topic',
+  '"  Marko Petrovic ",MARKO.PETROVIC@PetroCo.rs,PetroCo,invoice reminders',
+  'Jelena Djordjevic,jelena.djordjevic@ petroco.rs,PetroCo,lead routing',
+  'marko petrovic,marko.petrovic@petroco.rs,PetroCo,duplicate row',
+  'Ivan Horvat,ivan.horvat@,Horvat d.o.o.,webhook capture',
+  'Ana Muller,ana.muller@nordwind.de,Nordwind GmbH,crm sync',
+  'Ana Muller,,Nordwind GmbH,no email given'
+].join('\n');
+
+function lfCell(v) {
+  var s = String(v == null ? '' : v);
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function lfToCsv(cols, rows) {
+  var out = [cols.join(',')];
+  rows.forEach(function (r) {
+    out.push(cols.map(function (c) { return lfCell(r[c]); }).join(','));
+  });
+  return out.join('\n') + '\n';
+}
+
+function lfCleanedCsv(result) {
+  return lfToCsv(['full_name', 'email', 'domain', 'company', 'topic', 'pattern_count'],
+    result.leads.map(function (l) {
+      return { full_name: l.full_name, email: l.email, domain: l.domain, company: l.company, topic: l.topic, pattern_count: l.pattern_count };
+    }));
+}
+
+function lfPatternsCsv(result) {
+  var rows = [];
+  result.leads.forEach(function (l) {
+    (l.email_patterns || []).forEach(function (p) {
+      rows.push({ full_name: l.full_name, company: l.company, domain: l.domain, pattern: p, status: 'verify before sending' });
+    });
+  });
+  return lfToCsv(['full_name', 'company', 'domain', 'pattern', 'status'], rows);
+}
+
+function lfReport(result) {
+  var s = result.summary;
+  var lines = [
+    '# LeadFlow Studio - run report',
+    '',
+    'Rows in: ' + (result.leads.length + result.rejected.length),
+    'Clean leads: ' + s.leads_clean,
+    'Rejected (with reason): ' + result.rejected.length,
+    'Candidate patterns: ' + s.patterns_generated,
+    'Drafts written: ' + s.drafts_written,
+    'Emails sent: 0',
+    'Network calls: 0',
+    '',
+    '## Rejected rows',
+    ''
+  ];
+  if (!result.rejected.length) lines.push('None - every row was usable.');
+  result.rejected.forEach(function (r) { lines.push('- ' + (r.name || '(no name)') + ': ' + r.reason); });
+  lines.push('', '## Patterns per lead', '');
+  if (!result.leads.length) lines.push('None.');
+  result.leads.forEach(function (l) {
+    lines.push('- ' + l.full_name + ' (' + l.domain + '): ' + (l.email_patterns || []).join(', '));
+  });
+  lines.push('', 'Patterns are candidates. Verify each address before sending. This report was produced in a browser with no network access.');
+  return lines.join('\n') + '\n';
+}
+
+var LF_OUT = null;
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function lfSave(name, text) {
+  var blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+}
+
+function renderStudio() {
+  var box = document.getElementById('summary');
+  var rej = document.getElementById('rejected');
+  var result;
+  try {
+    result = lfRun(lfParseCsv(document.getElementById('csv').value));
+  } catch (err) {
+    box.innerHTML = '<span class="badge">' + esc(err.message) + '</span>';
+    rej.innerHTML = '';
+    LF_OUT = null;
+    ['d1', 'd2', 'd3'].forEach(function (id) { document.getElementById(id).disabled = true; });
+    return;
+  }
+  LF_OUT = result;
+  var s = result.summary;
+  box.innerHTML =
+    '<span class="stat"><b>' + s.leads_clean + '</b>clean leads</span>' +
+    '<span class="stat"><b>' + result.rejected.length + '</b>rejected, each with a reason</span>' +
+    '<span class="stat"><b>' + s.patterns_generated + '</b>candidate patterns</span>' +
+    '<span class="stat"><b>' + s.drafts_written + '</b>drafts</span>' +
+    '<span class="stat"><b>0</b>emails sent</span>';
+
+  if (result.rejected.length) {
+    var h = '<table><tr><th>Row</th><th>Why it was rejected</th></tr>';
+    result.rejected.forEach(function (r) {
+      h += '<tr><td>' + esc(r.name || '(no name)') + '</td><td class="mono">' + esc(r.reason) + '</td></tr>';
+    });
+    h += '</table>';
+    rej.innerHTML = h;
+  } else {
+    rej.innerHTML = '<p class="hint">Nothing rejected.</p>';
+  }
+  ['d1', 'd2', 'd3'].forEach(function (id) { document.getElementById(id).disabled = false; });
+}
+
+document.getElementById('run').addEventListener('click', renderStudio);
+document.getElementById('sample').addEventListener('click', function () {
+  document.getElementById('csv').value = SAMPLE;
+  renderStudio();
+});
+document.getElementById('d1').addEventListener('click', function () { if (LF_OUT) lfSave('leadflow-cleaned.csv', lfCleanedCsv(LF_OUT)); });
+document.getElementById('d2').addEventListener('click', function () { if (LF_OUT) lfSave('leadflow-patterns.csv', lfPatternsCsv(LF_OUT)); });
+document.getElementById('d3').addEventListener('click', function () { if (LF_OUT) lfSave('leadflow-report.md', lfReport(LF_OUT)); });
+document.getElementById('file').addEventListener('change', function (ev) {
+  var f = ev.target.files && ev.target.files[0];
+  if (!f) return;
+  var rd = new FileReader();
+  rd.onload = function () {
+    document.getElementById('csv').value = String(rd.result || '');
+    renderStudio();
+  };
+  rd.readAsText(f);
+});
+document.getElementById('csv').value = SAMPLE;
+renderStudio();
+/*</STUDIO>*/
+</script>
+</body></html>
