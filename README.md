@@ -1,6 +1,7 @@
 # LeadFlow - compliant lead generation in n8n
 
 **Live demo: https://fejzadenis.github.io/leadflow/demo.html** - runs in your browser, nothing installed, no network requests.
+**Free tool: https://fejzadenis.github.io/leadflow/studio.html** - drop a whole lead CSV in and take the cleaned file, the candidate patterns and a written reason for every rejected row. No install, no upload, no account.
 
 Most "lead generation automation" means scraping LinkedIn or buying a list. That is how accounts get
 restricted and inboxes get burned. LeadFlow works on data you already have: a CSV export, or a form
