@@ -549,6 +549,18 @@ function lfWorkbookMessage(kind, fileName) {
     '<a href="mailto:perun.intelligence@gmail.com?subject=LeadFlow%20-%20my%20workbook">perun.intelligence@gmail.com</a> and converting it is part of the <b>$49</b> clean-up (up to 5,000 rows, back within 24h).';
 }
 
+// The row count is the only fact this page knows about the buyer's own file before they pay, and it
+// is what decides the price. A 12,000-row export was told "a repair is $49 for up to 5,000 rows",
+// so the honest buyer either underpaid into a tier that does not cover their file or left to
+// think about it. The tier is named from the numbers the page just printed.
+function lfTierForRows(total) {
+  var n = Number(total) || 0;
+  if (n <= 5000) return { amount: 49, max: 5000, label: '$49 (up to 5,000 rows)' };
+  if (n <= 25000) return { amount: 79, max: 25000, label: '$79 (up to 25,000 rows)' };
+  if (n <= 100000) return { amount: 99, max: 100000, label: '$99 (up to 100,000 rows)' };
+  return null;
+}
+
 var LF_OUT = null;
 
 
@@ -611,10 +623,15 @@ function renderStudio() {
       'My import still says: (paste the exact error here)\n' +
       'The import tool is: (n8n / HubSpot / Pipedrive / Mailchimp / other)\n' +
       'File: I will attach it after you reply\n';
+    var tier = lfTierForRows(total);
+    var tierLine = tier
+      ? '<b>Your file: ' + total + ' rows &rarr; the ' + esc(tier.label) + ' repair is the one that covers it</b> (card 3, same files, 24 hours).'
+      : '<b>Your file: ' + total + ' rows, past the 100,000-row tier</b> &mdash; mail the row count first and the answer names a price before you pay.';
     ask.hidden = false;
     ask.innerHTML = 'If your import still rejects this file after cleaning, that is the one job rules cannot decide. ' +
       '<a href="mailto:perun.intelligence@gmail.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body) + '">Send it to a person</a> ' +
-      'with the error your import shows. The first answer is free; a repair is $49 for up to 5,000 rows, back within 24 hours. Nothing is attached until you attach it yourself.';
+      'with the error your import shows. The first answer is free; a repair is a flat price by size &mdash; $49 to 5,000 rows, $79 to 25,000, $99 to 100,000 &mdash; back within 24 hours. ' +
+      tierLine + ' Nothing is attached until you attach it yourself.';
   }
 }
 
