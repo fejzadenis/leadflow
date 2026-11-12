@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LeadFlow Studio - clean a lead CSV offline and take the files with you</title>
-<meta name="description" content="Drop a lead CSV in and get a cleaned file, candidate email patterns and a written reason for every rejected row. Runs in your browser: no install, no upload, no account, no network.">
+<title>Free email list cleaner - clean, dedupe and export a CSV in your browser</title>
+<meta name="description" content="A free email list cleaner that runs in your browser: fix broken addresses, remove duplicates by email, and download a cleaned CSV plus a per-row report. No upload, no account, no install, works offline.">
 <link rel="canonical" href="https://fejzadenis.github.io/leadflow/studio.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="LeadFlow">
 <meta property="og:url" content="https://fejzadenis.github.io/leadflow/studio.html">
-<meta property="og:title" content="LeadFlow Studio - clean a lead CSV offline, keep the files">
-<meta property="og:description" content="Cleaned CSV, email patterns and a written reason for every rejected row. No install, no upload, no network.">
+<meta property="og:title" content="Free email list cleaner - clean and dedupe a CSV offline">
+<meta property="og:description" content="Clean an email list in the browser: fixed addresses, deduped rows, a cleaned CSV and a reason for every row dropped. No upload, no account.">
 <meta property="og:image" content="https://fejzadenis.github.io/leadflow/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -44,8 +44,8 @@ a{color:#8fb7ff}
 .cta a.btn{display:inline-block;margin-top:10px;text-decoration:none;border-radius:9px;padding:11px 18px;background:var(--accent);color:#fff;font-weight:600;font-size:14px}
 </style></head><body><div class="wrap">
 <span class="badge">runs offline</span><span class="badge">nothing uploaded</span><span class="badge">no account</span>
-<h1>LeadFlow Studio: clean a whole CSV and <span>keep the files</span></h1>
-<p class="sub">The demo shows numbers on screen. This page gives you the output: a cleaned CSV to import, the candidate patterns in their own file, and a written reason for every row it rejected. Everything runs in this tab - your data never leaves the browser and the page makes no network request.</p>
+<h1>A free email list cleaner that <span>keeps the files</span></h1>
+<p class="sub">Paste a messy export or pick a CSV: broken addresses, stray spaces, mixed case and duplicate people get fixed, and you download a cleaned list you can import, the candidate email patterns in their own file, and a written reason for every row that was dropped. Everything runs in this tab - your list is never uploaded and the page makes no network request.</p>
 
 <div class="card">
   <div class="lbl">1 - Your lead CSV (paste it, or pick a file)</div>
@@ -73,6 +73,15 @@ a{color:#8fb7ff}
   <div class="lbl">3 - If this is the useful part</div>
   <p class="sub" style="margin-top:0">This page is a single pass with no memory and no Google Sheets. The pack is the four importable n8n workflows - webhook intake, dedupe inside the sheet, optional AI draft, Sheets logging - plus the first-run guide and the troubleshooting page built from real buyer failures. Launch price $49, 14-day refund on request.</p>
   <a class="btn" href="./">See what is in the pack</a>
+</div>
+
+<div class="card">
+  <div class="lbl">Questions people ask before pasting a list</div>
+  <p class="hint"><b>Is this email list cleaner free?</b> Yes - it runs in the tab with no account and no sign-up. The $49 pack is a different thing: importable n8n workflows that do this inside your own automation, with Sheets logging.</p>
+  <p class="hint"><b>Does it upload my list anywhere?</b> No. There is no fetch, no XHR, no storage - the file is read in this tab and disappears when you close it.</p>
+  <p class="hint"><b>Does it remove duplicate emails?</b> Yes, by email identity: <i>Marko.Petrovic@Acme.com</i> and <i>marko.petrovic@acme.com</i> are one person, and the row with more filled fields is the one kept. The report states how many rows were merged.</p>
+  <p class="hint"><b>Which exports does it read?</b> Comma, semicolon and tab separated, including a straight paste from Excel or Google Sheets; Pipedrive <i>Email - Work</i>, HubSpot <i>Work Email</i> and Mailchimp <i>Email 1</i> headers are recognised.</p>
+  <p class="hint"><b>Does it tell me which addresses will bounce?</b> No - it cleans, it does not verify. Guessed patterns are candidates you confirm before sending, and every rejected row is listed with the rule that rejected it rather than being dropped silently.</p>
 </div>
 
 <p class="foot"><b>Honest limits:</b> patterns are candidates, not verified addresses - you confirm each one before sending. Nothing is sent and nothing is stored; closing the tab discards everything. This tool dedupes inside one file only - it does not read rows already in a spreadsheet. The draft text is a template, not AI.</p>
