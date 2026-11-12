@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Free email list cleaner: fix encoding, dedupe and export a CSV</title>
-<meta name="description" content="Free email list cleaner in your browser: fix broken addresses, remove duplicates by email, repair a CSV whose accents or names open as question marks (wrong encoding), and download a cleaned CSV plus a per-row report. No upload, no account, no install.">
+<title>Repair a CSV file online, free: fix encoding and broken rows</title>
+<meta name="description" content="Repair a CSV file online, free, in your browser: names that open as question marks (wrong encoding), broken quotes, stray spaces and duplicate people are fixed, and you download a cleaned CSV plus a report on every row. No upload, no account, no install.">
 <link rel="canonical" href="https://fejzadenis.github.io/leadflow/studio.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="LeadFlow">
 <meta property="og:url" content="https://fejzadenis.github.io/leadflow/studio.html">
-<meta property="og:title" content="Free email list cleaner - clean and dedupe a CSV offline">
-<meta property="og:description" content="Clean an email list in the browser: fixed addresses, deduped rows, a cleaned CSV and a reason for every row dropped. No upload, no account.">
+<meta property="og:title" content="Repair a CSV file free - fix encoding without uploading it">
+<meta property="og:description" content="Fix a CSV whose names open as question marks, repair ragged rows and duplicates, and download a cleaned CSV with a reason for every row dropped. No upload, no account.">
 <meta property="og:image" content="https://fejzadenis.github.io/leadflow/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -44,8 +44,8 @@ a{color:#8fb7ff}
 .cta a.btn{display:inline-block;margin-top:10px;text-decoration:none;border-radius:9px;padding:11px 18px;background:var(--accent);color:#fff;font-weight:600;font-size:14px}
 </style></head><body><div class="wrap">
 <span class="badge">runs offline</span><span class="badge">nothing uploaded</span><span class="badge">no account</span>
-<h1>A free email list cleaner that <span>keeps the files</span></h1>
-<p class="sub">Paste a messy export or pick a CSV: broken addresses, stray spaces, mixed case and duplicate people get fixed, and you download a cleaned list you can import, the candidate email patterns in their own file, and a written reason for every row that was dropped. Everything runs in this tab - your list is never uploaded and the page makes no network request.</p>
+<h1>Repair a broken CSV <span>without uploading it</span></h1>
+<p class="sub">Paste a broken export or pick a CSV: names that open as question marks, broken quotes, ragged rows, stray spaces and duplicate people are all handled, and you download a cleaned CSV you can import, the candidate email patterns in their own file, and a written reason for every row that was dropped or rewritten. Everything runs in this tab - your file is never uploaded and the page makes no network request.</p>
 
 <div class="card">
   <div class="lbl">1 - Your lead CSV (paste it, or pick a file)</div>
@@ -82,7 +82,7 @@ a{color:#8fb7ff}
 
 <div class="card">
   <div class="lbl">Questions people ask before pasting a list</div>
-  <p class="hint"><b>Is this email list cleaner free?</b> Yes - it runs in the tab with no account and no sign-up. The $49 pack is a different thing: importable n8n workflows that do this inside your own automation, with Sheets logging.</p>
+  <p class="hint"><b>Is this CSV repair free?</b> Yes - it runs in the tab with no account and no sign-up. The $49 offers are different things: one export fixed by a person (up to 5,000 rows, 24h, a report), or the n8n pack that does this inside your own automation with Sheets logging.</p>
   <p class="hint"><b>Does it upload my list anywhere?</b> No. There is no fetch, no XHR, no storage - the file is read in this tab and disappears when you close it.</p>
   <p class="hint"><b>Does it remove duplicate emails?</b> Yes, by email identity: <i>Marko.Petrovic@Acme.com</i> and <i>marko.petrovic@acme.com</i> are one person, and the row with more filled fields is the one kept. The report states how many rows were merged.</p>
   <p class="hint"><b>Why does my Excel CSV open with question marks or broken letters?</b> The file was saved in a legacy encoding (Windows-1250 on a Serbian/Polish/Czech Windows, Windows-1252 in the West) and was then read as UTF-8. This page decodes the bytes by their real encoding instead of guessing, names the encoding it used, and downloads the cleaned CSV with a BOM so Excel reopens it with the names intact.</p>
