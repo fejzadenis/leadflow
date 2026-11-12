@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LeadFlow - 4 n8n workflows that turn a lead list into a ready-to-send pipeline (no scraping)</title>
+<meta name="description" content="Compliant B2B lead generation in n8n: clean a CSV, generate candidate email patterns, draft outreach, log to Sheets. No scraping, no paid APIs. Live demo runs in your browser.">
+<style>
+:root{--bg:#0b0f14;--card:#131a22;--text:#e6edf3;--muted:#8b98a9;--accent:#4f8cff;--green:#2ea043;--border:#22303c}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.55;padding:34px 18px 64px}
+.wrap{max-width:900px;margin:0 auto}
+.badge{display:inline-block;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;color:#b9d0ff;border:1px solid rgba(79,140,255,.45);background:rgba(79,140,255,.12);border-radius:999px;padding:4px 11px}
+h1{font-size:30px;line-height:1.2;letter-spacing:-.4px;margin-top:14px}
+h1 span{color:var(--accent)}
+.sub{color:var(--muted);font-size:15px;margin-top:10px;max-width:720px}
+.btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}
+a.btn{display:inline-block;text-decoration:none;border-radius:9px;padding:12px 20px;font-size:14.5px;font-weight:600;background:var(--accent);color:#fff}
+a.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text);font-weight:500}
+a.btn:hover{filter:brightness(1.09)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-top:20px}
+h2{font-size:17px;margin-bottom:12px;letter-spacing:-.2px}
+ul{list-style:none}
+li{padding:9px 0;border-bottom:1px solid rgba(34,48,60,.6);font-size:14px}
+li:last-child{border-bottom:0}
+li b{color:var(--text);font-weight:600}
+li i{color:var(--muted);font-style:normal;display:block;font-size:12.8px;margin-top:2px}
+.price{font-size:26px;font-weight:700;letter-spacing:-.5px}
+.price s{color:var(--muted);font-size:15px;font-weight:500;margin-left:8px}
+.muted{color:var(--muted);font-size:13.5px}
+.foot{color:var(--muted);font-size:12.5px;margin-top:26px;line-height:1.7}
+a{color:#8fb7ff}
+</style></head><body><div class="wrap">
+<span class="badge">n8n &middot; no scraping &middot; no paid APIs</span>
+<h1>LeadFlow: a lead list in, a <span>ready-to-send pipeline</span> out</h1>
+<p class="sub">Four importable n8n workflows that clean a CSV, decide which leads are usable, generate candidate email addresses from name + company domain, and draft the first message &mdash; then log every row to Google Sheets. No LinkedIn scraping, so no account bans and no API bills.</p>
+<div class="btns">
+<a class="btn" href="demo.html">Run the live demo (no install)</a>
+<a class="btn ghost" href="#get">Get the pack &mdash; $49 launch</a>
+</div>
+
+<div class="card">
+<h2>What is in the pack</h2>
+<ul>
+<li><b>01 &middot; CSV &rarr; clean leads (dedupe by email identity)</b><i>Header variants, stray spaces, casing, missing fields &mdash; each rejected row gets a written reason.</i></li>
+<li><b>02 &middot; Webhook &rarr; same sheet</b><i>Any form or app can POST a lead; the pipeline keeps one source of truth.</i></li>
+<li><b>03 &middot; Outreach draft</b><i>Optional AI-written first message (your own API key) or a template that needs no AI at all.</i></li>
+<li><b>04 &middot; Email patterns</b><i>Candidate addresses from name + domain, with diacritics folded (&Scaron;i&scaron;i&#263;, Kova&#269;, M&uuml;ller). You verify before sending.</i></li>
+</ul>
+</div>
+
+<div class="card">
+<h2>Why it exists</h2>
+<p class="muted">Most &ldquo;lead generation&rdquo; automation means scraping LinkedIn or buying a list &mdash; which is how accounts get restricted and how inboxes get burned. This pack works on data you already have, writes down why it removed a row, and never sends an email by itself. You stay the sender; the machine does the boring part.</p>
+</div>
+
+<div class="card" id="get">
+<h2>Get the pack</h2>
+<p class="price">$49 <s>$79 after launch</s></p>
+<p class="muted" style="margin-top:8px">Four workflows (JSON, ready to import), the zero-setup demo workflow, the first-run guide, the troubleshooting page built from real failures, and a commercial-use license. 14-day refund on request. One-time payment, no subscription.</p>
+<div class="btns">
+<a class="btn" href="https://github.com/fejzadenis/leadflow/issues/new?title=LeadFlow%20order&body=I%20would%20like%20the%20LeadFlow%20pack%20(%2449%20launch).%20Where%20can%20I%20pay%3F">Order / ask a question</a>
+<a class="btn ghost" href="demo.html">Try it first</a>
+</div>
+<p class="muted" style="margin-top:12px">Ordering is a conversation, not a checkout: reply on whatever post or message brought you here, or open an issue above. You get the files as an attachment after payment. Card checkout is being wired up.</p>
+</div>
+
+<div class="card">
+<h2>Free workflows (take these now)</h2>
+<ul>
+<li><b><a href="free/leadflow-free-lead-dedupe.json">Remove duplicate leads from a CSV</a></b><i>Import the JSON into n8n, press Execute.</i></li>
+<li><b><a href="free/leadflow-free-clean-csv.json">Clean a messy lead CSV export</a></b><i>Fixes headers, spaces, casing; reports what it dropped.</i></li>
+<li><b><a href="free/leadflow-free-email-patterns.json">Generate candidate email addresses</a></b><i>Name + domain in, patterns out. Verify before sending.</i></li>
+</ul>
+</div>
+
+<p class="foot"><b>Honest limits:</b> patterns are candidates, not verified addresses &mdash; you confirm each one before sending. The template draft in the free workflows is not AI; workflow 03 in the pack adds an optional AI draft using your own key. The demo runs entirely in your browser and makes no network request. Google Sheets needs your own Google account; n8n needs to be installed (desktop, Docker, or cloud).</p>
+</div></body></html>

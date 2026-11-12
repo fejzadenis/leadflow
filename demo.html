@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LeadFlow live demo - run the pipeline in your browser, nothing installed</title>
+<style>
+:root{--bg:#0b0f14;--card:#131a22;--text:#e6edf3;--muted:#8b98a9;--accent:#4f8cff;--green:#2ea043;--red:#d9534f;--border:#22303c}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;padding:28px 18px 60px}
+.wrap{max-width:1040px;margin:0 auto}
+h1{font-size:27px;line-height:1.25;letter-spacing:-.3px}
+h1 span{color:var(--accent)}
+.sub{color:var(--muted);font-size:14.5px;margin-top:8px;max-width:760px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-top:18px}
+.lbl{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+textarea{width:100%;min-height:150px;background:#0e141b;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:Consolas,monospace;font-size:13px;line-height:1.55;resize:vertical}
+.btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+button.ghost{background:transparent;border:1px solid var(--border);color:var(--muted);font-weight:500}
+button:hover{filter:brightness(1.08)}
+.hint{color:var(--muted);font-size:12.5px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;padding:6px 8px 6px 0;border-bottom:1px solid var(--border)}
+td{padding:8px 8px 8px 0;border-bottom:1px solid rgba(34,48,60,.6);vertical-align:top}
+td.mono{font-family:Consolas,monospace;font-size:12.5px;color:var(--green)}
+.rej{font-size:13px;padding:8px 0;border-bottom:1px solid rgba(34,48,60,.6)}
+.rej b{color:#f0b7b7;font-weight:600}
+.rej i{color:var(--muted);font-style:normal;display:block;font-size:12.5px;margin-top:2px}
+.lead{margin-bottom:14px}
+.lead .who{font-weight:600;font-size:14px}
+.lead .dom{color:var(--muted);font-size:12.5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{font-family:Consolas,monospace;font-size:12px;color:var(--green);background:rgba(46,160,67,.1);border:1px solid rgba(46,160,67,.35);border-radius:6px;padding:2px 7px}
+pre{white-space:pre-wrap;font-family:Consolas,monospace;font-size:12.5px;background:#0e141b;border:1px solid var(--border);border-radius:8px;padding:12px;color:#cfe3ff}
+.summary{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-top:18px;padding:14px 18px;border:1px solid rgba(79,140,255,.4);background:rgba(79,140,255,.08);border-radius:12px}
+.stat{font-size:13px;color:var(--muted)}
+.stat b{display:block;font-size:20px;color:var(--text);font-weight:700;line-height:1.2}
+.badge{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid rgba(79,140,255,.45);color:#b9d0ff;background:rgba(79,140,255,.12)}
+.cta{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:22px;padding:16px 20px;background:var(--card);border:1px solid var(--border);border-radius:12px}
+.cta p{font-size:13.5px;color:var(--muted);max-width:600px}
+.cta a{display:inline-block;background:var(--green);color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:700;font-size:14px}
+.foot{color:var(--muted);font-size:12px;margin-top:18px;line-height:1.65}
+.foot b{color:var(--text);font-weight:600}
+</style></head><body><div class="wrap">
+
+<h1>Run the pipeline here - <span>no install, no key, no signup</span></h1>
+<p class="sub">This is the same cleaning, dedupe, pattern and draft logic that ships as workflow <b>00 Quick Demo</b> in the pack, running in your browser. Edit the CSV, press the button, watch what a lead list actually becomes. Nothing leaves this page.</p>
+
+<div class="card">
+  <div class="lbl">Input - paste a CSV (name, email, company, topic). Deliberately messy is fine.</div>
+  <textarea id="csv" spellcheck="false"></textarea>
+  <div class="btns">
+    <button id="run">Run the pipeline</button>
+    <button class="ghost" id="reset">Reset to the messy sample</button>
+    <span class="hint">Comma or semicolon. Quotes supported. Runs locally.</span>
+  </div>
+</div>
+
+<div class="summary" id="summary"></div>
+
+<div class="grid">
+  <div class="card">
+    <div class="lbl">Cleaned leads - what lands in your sheet</div>
+    <div id="leads"></div>
+  </div>
+  <div class="card">
+    <div class="lbl">Rejected rows - and exactly why</div>
+    <div id="rejected"></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="lbl">Candidate email patterns - from name + domain, no API</div>
+  <div id="patterns"></div>
+</div>
+
+<div class="card">
+  <div class="lbl">First-touch draft - written, never sent</div>
+  <pre id="draft"></pre>
+</div>
+
+<div class="cta"><p><b>This page is the demo.</b> The pack is the four workflows, the zero-setup demo workflow, the first-run guide and the troubleshooting page that survive contact with real data. Launch price $49 - 14-day refund on request.</p><a href="./">Get the pack</a></div>
+
+<p class="foot"><b>Honest limits:</b> patterns are candidates, not verified addresses - you confirm each one before sending. The draft is a template, not AI. This page makes no network request and stores nothing; the CSV you paste stays in this tab. Workflow 03 in the pack adds an optional AI-written draft, and 01/02 add Google Sheets.</p>
+
+</div>
+<script>
+/*<ENGINE>*/
+var LF_FOLD = { '\u00e4':'ae','\u00f6':'oe','\u00fc':'ue','\u0111':'dj','\u00f8':'o','\u0142':'l','\u00df':'ss','\u00e6':'ae','\u0153':'oe','\u00fe':'th','\u00f0':'d','\u0131':'i' };
+
+function lfLatin(s) {
+  return String(s || '').toLowerCase().split('').map(function (c) {
+    return LF_FOLD[c] === undefined ? c : LF_FOLD[c];
+  }).join('').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]/g, '');
+}
+
+function lfDelimiter(line) {
+  var semi = 0, comma = 0;
+  for (var i = 0; i < line.length; i++) {
+    if (line.charAt(i) === ';') semi++;
+    if (line.charAt(i) === ',') comma++;
+  }
+  return semi > comma ? ';' : ',';
+}
+
+function lfSplitLine(line, delim) {
+  var out = [], cur = '', q = false;
+  for (var i = 0; i < line.length; i++) {
+    var c = line.charAt(i);
+    if (q) {
+      if (c === '"') { if (line.charAt(i + 1) === '"') { cur += '"'; i++; } else { q = false; } }
+      else { cur += c; }
+    } else if (c === '"') { q = true; }
+    else if (c === delim) { out.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  out.push(cur);
+  return out;
+}
+
+function lfKey(h) { return String(h || '').toLowerCase().replace(/[^a-z]/g, ''); }
+
+function lfParseCsv(text) {
+  var lines = String(text || '').replace(/\r\n?/g, '\n').split('\n').filter(function (l) { return l.trim() !== ''; });
+  if (!lines.length) return [];
+  var delim = lfDelimiter(lines[0]);
+  var head = lfSplitLine(lines[0], delim).map(lfKey);
+  var idx = { name: -1, first: -1, last: -1, email: -1, company: -1, topic: -1 };
+  head.forEach(function (h, i) {
+    if (h === 'name' || h === 'fullname' || h === 'lead' || h === 'contact') idx.name = i;
+    else if (h === 'firstname' || h === 'first') idx.first = i;
+    else if (h === 'lastname' || h === 'last' || h === 'surname') idx.last = i;
+    else if (h === 'email' || h === 'emailaddress' || h === 'mail') idx.email = i;
+    else if (h === 'company' || h === 'organization' || h === 'organisation' || h === 'org' || h === 'firma') idx.company = i;
+    else if (h === 'topic' || h === 'note' || h === 'notes' || h === 'reason') idx.topic = i;
+  });
+  if (idx.email === -1) throw new Error('CSV needs an email column. Found: ' + head.join(', '));
+  var rows = [];
+  for (var n = 1; n < lines.length; n++) {
+    var cells = lfSplitLine(lines[n], delim);
+    var name = idx.name > -1 ? cells[idx.name] : '';
+    if (!String(name || '').trim() && (idx.first > -1 || idx.last > -1)) {
+      name = [idx.first > -1 ? cells[idx.first] : '', idx.last > -1 ? cells[idx.last] : ''].join(' ');
+    }
+    rows.push({
+      name: name || '',
+      email: idx.email > -1 ? (cells[idx.email] || '') : '',
+      company: idx.company > -1 ? (cells[idx.company] || '') : '',
+      topic: idx.topic > -1 ? (cells[idx.topic] || '') : ''
+    });
+  }
+  return rows;
+}
+
+var LF_NAME_WORD = /^[A-Za-zÀ-ɏ'’.-]+$/;
+
+// Exports written in "Lastname, Firstname" order (common in Balkan/EU sheets) used to be split
+// left-to-right, which produced reversed patterns: petrovic.marko@ instead of marko.petrovic@.
+// Swap only when both sides look like a person, never for "Prima, Inc." style company cells.
+var LF_ORG_TAIL = /^(inc|ltd|llc|gmbh|corp|co|plc|ag|sa|srl|spa|bv|nv|oy|ab|kg|ug|doo|holding|group|partners|studio|agency|labs|team|solutions)$/i;
+
+function lfReorderName(raw) {
+  var s = String(raw || '').trim().replace(/ +/g, ' ');
+  var i = s.indexOf(',');
+  if (i < 1) return s;
+  var before = s.slice(0, i).trim(), after = s.slice(i + 1).trim();
+  if (!before || !after) return s;
+  var b = before.split(' ').filter(Boolean), a = after.split(' ').filter(Boolean);
+  if (!b.length || b.length > 3 || !a.length || a.length > 2) return s;
+  var all = b.concat(a);
+  for (var k = 0; k < all.length; k++) if (!LF_NAME_WORD.test(all[k])) return s;
+  if (LF_ORG_TAIL.test(a[a.length - 1].replace(/[.]/g, ''))) return s;
+  return a.join(' ') + ' ' + b.join(' ');
+}
+
+function lfClean(rows) {
+  var seen = {}, leads = [], rejected = [];
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i] || {};
+    var displayName = lfReorderName(row.name);
+    var raw = String(row.email || '');
+    var email = raw.replace(/\s+/g, '').toLowerCase().replace(/^@+/, '').replace(/@+$/, '@');
+    var parts = email.split('@');
+    if (!email || parts.length !== 2 || !parts[0] || !parts[1]) {
+      rejected.push({ name: displayName, reason: 'no usable email: "' + raw.trim() + '"' });
+      continue;
+    }
+    if (!/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$/.test(parts[1])) {
+      rejected.push({ name: displayName, reason: 'invalid domain: "' + parts[1] + '"' });
+      continue;
+    }
+    if (seen[email]) {
+      rejected.push({ name: displayName, reason: 'duplicate of existing lead (' + email + ')' });
+      continue;
+    }
+    seen[email] = true;
+    var words = displayName.split(' ').filter(Boolean);
+    leads.push({
+      full_name: displayName,
+      first_name: words[0] || '',
+      last_name: words.slice(1).join(' '),
+      email: email,
+      domain: parts[1],
+      company: String(row.company || '').trim(),
+      topic: String(row.topic || '').trim()
+    });
+  }
+  return { leads: leads, rejected: rejected };
+}
+
+function lfPatterns(leads) {
+  return leads.map(function (l) {
+    var first = lfLatin(l.first_name), last = lfLatin(l.last_name);
+    var local = [];
+    if (first && last) local.push(first + '.' + last, first + last, first.charAt(0) + '.' + last, first.charAt(0) + last, first);
+    else if (first) local.push(first);
+    else if (last) local.push(last);
+    var uniq = [], seen = {};
+    local.forEach(function (p) {
+      if (seen[p] || p.charAt(0) === '.' || p.charAt(p.length - 1) === '.') return;
+      seen[p] = true;
+      uniq.push(p);
+    });
+    return Object.assign({}, l, {
+      email_patterns: uniq.map(function (p) { return p + '@' + l.domain; }),
+      pattern_count: uniq.length
+    });
+  });
+}
+
+function lfDraft(leads) {
+  return leads.map(function (l) {
+    var first = l.first_name || 'there';
+    var company = l.company || 'your team';
+    var topic = l.topic || 'your current process';
+    var subject = topic + ' at ' + company + ' - one question';
+    var body = [
+      'Hi ' + first + ',', '',
+      'I saw ' + company + ' and wanted to ask about ' + topic + ' - is that still handled by hand?', '',
+      'I put together four n8n workflows that take a lead CSV or webhook and turn it into a cleaned, deduped list with drafted first-touch emails. They install in about 15 minutes and never send anything on their own.', '',
+      'Worth a look, or has ' + company + ' already solved this?', '',
+      'Best,', '[your name]'
+    ].join('\n');
+    return Object.assign({}, l, {
+      draft_subject: subject,
+      draft_body: body,
+      draft_words: body.split(/\s+/).filter(Boolean).length,
+      must_review_before_sending: true
+    });
+  });
+}
+
+function lfRun(rows) {
+  var cleaned = lfClean(rows);
+  var patterned = lfPatterns(cleaned.leads);
+  var drafted = lfDraft(patterned);
+  var patterns = 0;
+  drafted.forEach(function (l) { patterns += l.pattern_count || 0; });
+  return {
+    leads: drafted,
+    rejected: cleaned.rejected,
+    summary: {
+      credentials_used: 'none',
+      network_calls_made: 0,
+      leads_clean: drafted.length,
+      patterns_generated: patterns,
+      drafts_written: drafted.length,
+      emails_sent: 0
+    }
+  };
+}
+/*</ENGINE>*/
+
+var SAMPLE = [
+  'name,email,company,topic',
+  '"  Marko Petrovic ",MARKO.PETROVIC@PetroCo.rs,PetroCo,invoice reminders',
+  'Jelena Djordjevic,jelena.djordjevic@ petroco.rs,PetroCo,lead routing',
+  'marko petrovic,marko.petrovic@petroco.rs,PetroCo,duplicate row',
+  'Ivan Horvat,ivan.horvat@,Horvat d.o.o.,webhook capture',
+  'Ana Muller,ana.muller@nordwind.de,Nordwind GmbH,crm sync',
+  'Ana Muller,,Nordwind GmbH,no email given'
+].join('\n');
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function render() {
+  var result;
+  try {
+    result = lfRun(lfParseCsv(document.getElementById('csv').value));
+  } catch (err) {
+    document.getElementById('summary').innerHTML = '<span class="badge">' + esc(err.message) + '</span>';
+    document.getElementById('leads').innerHTML = '';
+    document.getElementById('rejected').innerHTML = '';
+    document.getElementById('patterns').innerHTML = '';
+    document.getElementById('draft').textContent = '';
+    return;
+  }
+  var s = result.summary;
+  document.getElementById('summary').innerHTML =
+    '<span class="badge">ran locally</span>' +
+    '<div class="stat"><b>' + s.leads_clean + '</b>clean leads</div>' +
+    '<div class="stat"><b>' + result.rejected.length + '</b>rejected (with reasons)</div>' +
+    '<div class="stat"><b>' + s.patterns_generated + '</b>patterns</div>' +
+    '<div class="stat"><b>' + s.drafts_written + '</b>drafts</div>' +
+    '<div class="stat"><b>' + s.emails_sent + '</b>emails sent</div>' +
+    '<span class="badge">0 network calls</span>';
+
+  if (!result.leads.length) {
+    document.getElementById('leads').innerHTML = '<p class="hint">No usable rows - every row was rejected. That is the correct outcome, not a crash.</p>';
+    document.getElementById('patterns').innerHTML = '<p class="hint">Nothing to generate.</p>';
+    document.getElementById('draft').textContent = 'No leads, so no draft.';
+  } else {
+    var rowsHtml = '<table><tr><th>Name</th><th>Email</th><th>Company</th></tr>';
+    result.leads.forEach(function (l) {
+      rowsHtml += '<tr><td>' + esc(l.full_name) + '</td><td class="mono">' + esc(l.email) + '</td><td>' + esc(l.company) + '</td></tr>';
+    });
+    rowsHtml += '</table>';
+    document.getElementById('leads').innerHTML = rowsHtml;
+
+    var patHtml = '';
+    result.leads.forEach(function (l) {
+      patHtml += '<div class="lead"><div class="who">' + esc(l.full_name) + '</div><div class="dom">' + esc(l.domain) + ' - ' + l.pattern_count + ' candidates</div><div class="chips">';
+      l.email_patterns.forEach(function (p) { patHtml += '<span class="chip">' + esc(p) + '</span>'; });
+      patHtml += '</div></div>';
+    });
+    document.getElementById('patterns').innerHTML = patHtml;
+    document.getElementById('draft').textContent = 'Subject: ' + result.leads[0].draft_subject + '\n\n' + result.leads[0].draft_body;
+  }
+
+  if (!result.rejected.length) {
+    document.getElementById('rejected').innerHTML = '<p class="hint">Nothing rejected - every row was importable.</p>';
+  } else {
+    var rejHtml = '';
+    result.rejected.forEach(function (r) {
+      rejHtml += '<div class="rej"><b>' + esc(r.name || '(unnamed row)') + '</b><i>' + esc(r.reason) + '</i></div>';
+    });
+    document.getElementById('rejected').innerHTML = rejHtml;
+  }
+}
+
+document.getElementById('run').addEventListener('click', render);
+document.getElementById('reset').addEventListener('click', function () {
+  document.getElementById('csv').value = SAMPLE;
+  render();
+});
+document.getElementById('csv').value = SAMPLE;
+render();
+</script>
+</body></html>
