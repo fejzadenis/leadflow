@@ -60,6 +60,7 @@ a{color:#8fb7ff}
     <button id="d2" class="ghost" disabled>Download patterns CSV</button>
     <button id="d3" class="ghost" disabled>Download report</button>
   </div>
+  <p class="hint" id="mailnow">No time to run it here? Email the file to <a href="mailto:perun.intelligence@gmail.com?subject=My%20CSV%20will%20not%20import&body=Row%20count%3A%20%0D%0AWhat%20my%20import%20says%3A%20%0D%0AImport%20tool%20%28n8n%2FHubSpot%2FPipedrive%2FMailchimp%2Fother%29%3A%20%0D%0A%0D%0AI%20will%20attach%20the%20file%20once%20you%20reply.">perun.intelligence@gmail.com</a> with the row count and the error your import shows - the first answer is free, before any payment. A person reads it, not a form.</p>
   <p class="hint" id="bookhint">An <b>.xlsx / .xls</b> workbook is not a CSV (it is a zip of XML parts) - if you pick one, this page tells you how to save it as CSV in three clicks instead of pretending to read it.</p>
   <p class="hint">Needs an <b>email</b> column &mdash; <i>Email</i>, <i>Email - Work</i> (Pipedrive) and <i>Work Email</i> (HubSpot) all count. Name, company and topic are used when present; <i>Firstname/Lastname</i>, <i>Organization</i> and <i>Note</i> are recognised too. Comma, semicolon and tab-separated files work, including a straight copy-paste from Excel or Google Sheets. A file saved by Excel itself (UTF-8, UTF-16 or Windows-1250/1252) is decoded by its real encoding rather than guessed as UTF-8, and the cleaned CSV downloads with a BOM so Excel opens it without mangling names.</p>
   <p class="hint" id="enc" hidden></p>
