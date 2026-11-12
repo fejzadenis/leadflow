@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>n8n CSV to Google Sheets: fix ???? and broken letters</title>
+<meta name="description" content="n8n reads your CSV as UTF-8, Excel wrote it as Windows-1250, so names arrive as ?or?e Milo?evi?. The tested decode node, free to copy, plus what it does not fix.">
+<link rel="canonical" href="https://fejzadenis.github.io/leadflow/n8n-csv-encoding.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="LeadFlow">
+<meta property="og:url" content="https://fejzadenis.github.io/leadflow/n8n-csv-encoding.html">
+<meta property="og:title" content="n8n CSV to Google Sheets: fix ???? and broken letters">
+<meta property="og:description" content="The decode step that turns a Windows-1250 Excel export into UTF-8 before n8n's CSV parser ever sees it. Copy it from this page.">
+<meta property="og:image" content="https://fejzadenis.github.io/leadflow/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+:root{--bg:#0b0f14;--card:#131a22;--text:#e6edf3;--muted:#8b98a9;--accent:#4f8cff;--green:#2ea043;--border:#22303c}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+.wrap{max-width:840px;margin:0 auto;padding:48px 24px}
+h1{font-size:2.2rem;line-height:1.2;margin-bottom:14px}h1 span{color:var(--accent)}
+h2{font-size:1.35rem;margin:38px 0 10px}
+.lead{font-size:1.12rem;color:var(--muted);margin-bottom:22px}
+.box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin:20px 0}
+.box p,.box li{color:var(--muted);font-size:.95rem}
+ul,ol{margin:10px 0 0 22px}li{margin:7px 0;color:var(--muted)}
+code{background:#0e151d;border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:.9em;color:#c8d6e5}
+pre{background:#0e151d;border:1px solid var(--border);border-radius:10px;padding:16px;overflow:auto;max-height:420px;margin:14px 0}
+pre code{border:0;padding:0;background:none;font-size:.78rem;line-height:1.5;white-space:pre;color:#c8d6e5}
+.btn{display:inline-block;background:var(--accent);color:#fff;padding:13px 24px;border-radius:10px;font-weight:700;text-decoration:none}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.muted{color:var(--muted);font-size:.9rem}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.9rem}
+td,th{border:1px solid var(--border);padding:8px 10px;text-align:left;color:var(--muted)}
+th{color:var(--text);font-weight:600}
+.honest{border-left:3px solid var(--green);padding-left:14px}
+.footer{color:var(--muted);font-size:.85rem;border-top:1px solid var(--border);margin-top:44px;padding-top:18px}
+a{color:var(--accent)}
+</style>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Why does n8n show question marks when Google Sheets shows the names correctly?","acceptedAnswer":{"@type":"Answer","text":"Google Sheets sniffs the bytes and n8n does not. Excel on a Serbian, Croatian, Polish, Czech or Hungarian Windows writes CSV in Windows-1250, while the n8n Extract from File node decodes the file as UTF-8. Every byte above 0x7F that is not valid UTF-8 becomes a question mark, and that is what reaches the sheet."}},{"@type":"Question","name":"Is the CSV node itself at fault?","acceptedAnswer":{"@type":"Answer","text":"No. The parser does its job on the text it was handed; the file was decoded before it got there. A decode step between the file node and the parser is the fix. Changing delimiter or quote options will not bring the letters back, because the bytes are already gone."}},{"@type":"Question","name":"Do I have to use a Code node?","acceptedAnswer":{"@type":"Answer","text":"If your own system writes the file, save it as CSV UTF-8 (in Excel that is the CSV UTF-8 (Comma delimited) option) and skip the node. If the file arrives from somebody else Excel, their export is Windows-1250 and you cannot control it - the node is the reliable option."}},{"@type":"Question","name":"Does it handle Cyrillic, Greek or Japanese CSV?","acceptedAnswer":{"@type":"Answer","text":"No, and it will not pretend to. Detection is BOM, then strict UTF-8, then Windows-1250. A Windows-1251 Cyrillic export is decoded as 1250 and the letters come out wrong - use a Cyrillic-aware conversion, or ask the sender for a UTF-8 export."}},{"@type":"Question","name":"Does the node send my file anywhere?","acceptedAnswer":{"@type":"Answer","text":"No. It is plain JavaScript inside your own n8n Code node: it reads the binary property, rewrites it as UTF-8 and returns it. No network call, no API key, no dependency."}}]}</script>
+</head><body><div class="wrap">
+<p class="muted"><a href="./">LeadFlow</a> / n8n CSV encoding</p>
+<h1>n8n shows <span>????</span> instead of names: the CSV encoding fix</h1>
+<p class="lead">You exported a clean CSV from Excel, imported it into n8n, sent it to Google Sheets, and the sheet now says <code>?or?e Milo?evi?</code>. The file is fine. The order of operations is not: n8n decoded the file before anyone checked what encoding it actually was.</p>
+
+<h2>What you are looking at</h2>
+<table><tr><th>Where</th><th>What you see</th><th>What it means</th></tr>
+<tr><td>n8n / Google Sheets</td><td><code>?or?e Milo?evi?</code></td><td>Windows-1250 bytes decoded as UTF-8: every byte above 0x7F became a question mark</td></tr>
+<tr><td>Google Sheets, opening the same file directly</td><td><code>Đorđe Milošević</code></td><td>Sheets sniffed the encoding and got it right - the file was never broken</td></tr>
+<tr><td>Sheets after a second "fix"</td><td><code>MiloÅ¡eviÄ‡</code></td><td>UTF-8 bytes decoded as Windows-1250: the mirror-image mistake, usually made while repairing the first one</td></tr></table>
+<p class="muted">Both failures are the same bug in opposite directions - text decoded with the wrong code page. Once a byte has become a question mark, no parser option brings the letter back, which is why changing the CSV node's delimiter or quote settings never helps.</p>
+
+<h2>Why n8n does this</h2>
+<div class="box">
+<p>Excel's plain <b>CSV (Comma delimited)</b> export writes the system ANSI code page. On a Serbian, Croatian, Polish, Czech, Hungarian or Romanian Windows install that is <b>Windows-1250</b>, not UTF-8. n8n's <b>Extract from File</b> node reads the file as UTF-8, so <code>0xB9</code> (š) is not a valid UTF-8 start byte and is replaced.</p>
+<p>There is a quieter second variant: Excel's <b>Unicode Text</b> export is UTF-16 with a BOM, and a node that assumes UTF-8 turns it into a file full of NUL characters.</p>
+</div>
+
+<h2>The fix: one Code node before the parser</h2>
+<p>Put a Code node named <b>Decode CSV bytes</b> between the node that reads the file and the node that parses it. It looks at the bytes instead of trusting a default - BOM first, then strict UTF-8, then Windows-1250 - rewrites the file as UTF-8, and records which encoding it found in <code>lfEncoding</code>, so the choice is visible downstream instead of silent.</p>
+<ol>
+<li>Add a <b>Code</b> node and set <b>Mode</b> to <i>Run Once for All Items</i>.</li>
+<li>Paste the node below, unchanged.</li>
+<li>Connect it so the file arrives as the binary property <code>data</code> - the output of <i>Read/Write Files from Disk</i> or a Google Drive <i>Download</i>.</li>
+<li>Leave the following CSV node on the same binary property. It now reads valid UTF-8.</li>
+</ol>
+<pre class="n8n-code" data-sha="47255d8c1f1dc52b20c2435584abe1bb9b94bc0bb959545c2635ddce2c5dd089"><code>// wf01-decode-node.js - source for the "Decode CSV bytes" Code node of the PAID pack's
+// workflow 01 (CSV -&gt; Google Sheets). Not executed directly: sales/make-wf01-encoding.mjs
+// inlines this file into workflows/01-lead-import-csv.json, replacing \u20ac\u0081\u201a\u0083\u201e\u2026\u2020\u2021\u0088\u2030\u0160\u2039\u015a\u0164\u017d\u0179\u0090\u2018\u2019\u201c\u201d\u2022\u2013\u2014\u0098\u2122\u0161\u203a\u015b\u0165\u017e\u017a\u00a0\u02c7\u02d8\u0141\u00a4\u0104\u00a6\u00a7\u00a8\u00a9\u015e\u00ab\u00ac\u00ad\u00ae\u017b\u00b0\u00b1\u02db\u0142\u00b4\u00b5\u00b6\u00b7\u00b8\u0105\u015f\u00bb\u013d\u02dd\u013e\u017c\u0154\u00c1\u00c2\u0102\u00c4\u0139\u0106\u00c7\u010c\u00c9\u0118\u00cb\u011a\u00cd\u00ce\u010e\u0110\u0143\u0147\u00d3\u00d4\u0150\u00d6\u00d7\u0158\u016e\u00da\u0170\u00dc\u00dd\u0162\u00df\u0155\u00e1\u00e2\u0103\u00e4\u013a\u0107\u00e7\u010d\u00e9\u0119\u00eb\u011b\u00ed\u00ee\u010f\u0111\u0144\u0148\u00f3\u00f4\u0151\u00f6\u00f7\u0159\u016f\u00fa\u0171\u00fc\u00fd\u0163\u02d9 with
+// the Windows-1250 upper half escaped as U+ hex codes, so no encoding pass can corrupt it.
+//
+// Plain ES5-ish JS on purpose: it runs inside n8n's Code node sandbox, where Buffer,
+// TextDecoder and atob are not guaranteed to exist.
+//
+// The problem it fixes: n8n's "Extract from File" reads a CSV as UTF-8. Excel on a Serbian,
+// Polish, Czech or Hungarian Windows writes Windows-1250 by default, so a name with
+// D-stroke, c-caron or s-caron arrives as question marks and the buyer's Google Sheet
+// stores the wreckage. This node looks at the bytes (BOM, then strict UTF-8, then
+// Windows-1250), rewrites the file as UTF-8 and records which encoding it used, so the
+// CSV parser downstream only ever sees valid UTF-8.
+
+const items = $input.all();
+if (!items.length) return [];
+
+// Windows-1250, bytes 0x80-0xFF.
+const CP1250 = "\u20ac\u0081\u201a\u0083\u201e\u2026\u2020\u2021\u0088\u2030\u0160\u2039\u015a\u0164\u017d\u0179\u0090\u2018\u2019\u201c\u201d\u2022\u2013\u2014\u0098\u2122\u0161\u203a\u015b\u0165\u017e\u017a\u00a0\u02c7\u02d8\u0141\u00a4\u0104\u00a6\u00a7\u00a8\u00a9\u015e\u00ab\u00ac\u00ad\u00ae\u017b\u00b0\u00b1\u02db\u0142\u00b4\u00b5\u00b6\u00b7\u00b8\u0105\u015f\u00bb\u013d\u02dd\u013e\u017c\u0154\u00c1\u00c2\u0102\u00c4\u0139\u0106\u00c7\u010c\u00c9\u0118\u00cb\u011a\u00cd\u00ce\u010e\u0110\u0143\u0147\u00d3\u00d4\u0150\u00d6\u00d7\u0158\u016e\u00da\u0170\u00dc\u00dd\u0162\u00df\u0155\u00e1\u00e2\u0103\u00e4\u013a\u0107\u00e7\u010d\u00e9\u0119\u00eb\u011b\u00ed\u00ee\u010f\u0111\u0144\u0148\u00f3\u00f4\u0151\u00f6\u00f7\u0159\u016f\u00fa\u0171\u00fc\u00fd\u0163\u02d9";
+
+const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+function b64ToBytes(s) {
+  const clean = String(s).replace(/^data:[^,]*,/, "").replace(/[^A-Za-z0-9+/=]/g, "");
+  const out = [];
+  let buf = 0;
+  let bits = 0;
+  for (let i = 0; i &lt; clean.length; i++) {
+    const c = clean.charCodeAt(i);
+    if (c === 61) break;
+    let v = -1;
+    if (c &gt;= 65 &amp;&amp; c &lt;= 90) v = c - 65;
+    else if (c &gt;= 97 &amp;&amp; c &lt;= 122) v = c - 71;
+    else if (c &gt;= 48 &amp;&amp; c &lt;= 57) v = c + 4;
+    else if (c === 43) v = 62;
+    else if (c === 47) v = 63;
+    if (v &lt; 0) continue;
+    buf = (buf &lt;&lt; 6) | v;
+    bits += 6;
+    if (bits &gt;= 8) {
+      bits -= 8;
+      out.push((buf &gt;&gt; bits) &amp; 0xFF);
+    }
+  }
+  return out;
+}
+
+function bytesToB64(b) {
+  let out = "";
+  for (let i = 0; i &lt; b.length; i += 3) {
+    const b1 = b[i];
+    const b2 = i + 1 &lt; b.length ? b[i + 1] : undefined;
+    const b3 = i + 2 &lt; b.length ? b[i + 2] : undefined;
+    out += B64[b1 &gt;&gt; 2];
+    out += B64[((b1 &amp; 3) &lt;&lt; 4) | ((b2 === undefined ? 0 : b2) &gt;&gt; 4)];
+    out += b2 === undefined ? "=" : B64[((b2 &amp; 15) &lt;&lt; 2) | ((b3 === undefined ? 0 : b3) &gt;&gt; 6)];
+    out += b3 === undefined ? "=" : B64[b3 &amp; 63];
+  }
+  return out;
+}
+
+// Strict UTF-8. Returns null on the first sequence that is not valid UTF-8: lenient
+// decoding would turn bad bytes into replacement characters and we would never learn
+// that the file was not UTF-8 at all.
+function utf8Strict(b, start) {
+  let out = "";
+  let i = start || 0;
+  while (i &lt; b.length) {
+    const c = b[i++];
+    if (c &lt; 0x80) { out += String.fromCharCode(c); continue; }
+    let need;
+    let cp;
+    if (c &gt;= 0xC2 &amp;&amp; c &lt;= 0xDF) { need = 1; cp = c &amp; 0x1F; }
+    else if (c &gt;= 0xE0 &amp;&amp; c &lt;= 0xEF) { need = 2; cp = c &amp; 0x0F; }
+    else if (c &gt;= 0xF0 &amp;&amp; c &lt;= 0xF4) { need = 3; cp = c &amp; 0x07; }
+    else return null;
+    if (i + need &gt; b.length) return null;
+    for (let k = 0; k &lt; need; k++) {
+      const cc = b[i++];
+      if ((cc &amp; 0xC0) !== 0x80) return null;
+      cp = (cp &lt;&lt; 6) | (cc &amp; 0x3F);
+    }
+    if (cp &gt; 0x10FFFF || (cp &gt;= 0xD800 &amp;&amp; cp &lt;= 0xDFFF)) return null;
+    if (cp &gt; 0xFFFF) {
+      const v = cp - 0x10000;
+      out += String.fromCharCode(0xD800 + (v &gt;&gt; 10), 0xDC00 + (v &amp; 0x3FF));
+    } else {
+      out += String.fromCharCode(cp);
+    }
+  }
+  return out;
+}
+
+function utf8Encode(str) {
+  const out = [];
+  for (let i = 0; i &lt; str.length; i++) {
+    let cp = str.charCodeAt(i);
+    if (cp &gt;= 0xD800 &amp;&amp; cp &lt;= 0xDBFF &amp;&amp; i + 1 &lt; str.length) {
+      const lo = str.charCodeAt(i + 1);
+      if (lo &gt;= 0xDC00 &amp;&amp; lo &lt;= 0xDFFF) {
+        cp = 0x10000 + ((cp - 0xD800) &lt;&lt; 10) + (lo - 0xDC00);
+        i++;
+      }
+    }
+    if (cp &lt; 0x80) out.push(cp);
+    else if (cp &lt; 0x800) out.push(0xC0 | (cp &gt;&gt; 6), 0x80 | (cp &amp; 0x3F));
+    else if (cp &lt; 0x10000) out.push(0xE0 | (cp &gt;&gt; 12), 0x80 | ((cp &gt;&gt; 6) &amp; 0x3F), 0x80 | (cp &amp; 0x3F));
+    else out.push(0xF0 | (cp &gt;&gt; 18), 0x80 | ((cp &gt;&gt; 12) &amp; 0x3F), 0x80 | ((cp &gt;&gt; 6) &amp; 0x3F), 0x80 | (cp &amp; 0x3F));
+  }
+  return out;
+}
+
+function cp1250Decode(b) {
+  let out = "";
+  for (let i = 0; i &lt; b.length; i++) {
+    const c = b[i];
+    out += c &lt; 0x80 ? String.fromCharCode(c) : CP1250.charAt(c - 0x80);
+  }
+  return out;
+}
+
+function utf16Decode(b, start, little) {
+  let out = "";
+  for (let i = start; i + 1 &lt; b.length; i += 2) {
+    const u = little ? b[i] | (b[i + 1] &lt;&lt; 8) : (b[i] &lt;&lt; 8) | b[i + 1];
+    out += String.fromCharCode(u);
+  }
+  return out;
+}
+
+function decodeBytes(b) {
+  if (b.length &gt;= 3 &amp;&amp; b[0] === 0xEF &amp;&amp; b[1] === 0xBB &amp;&amp; b[2] === 0xBF) {
+    const s = utf8Strict(b, 3);
+    if (s !== null) return { text: s, encoding: "UTF-8 (BOM)" };
+  }
+  if (b.length &gt;= 2 &amp;&amp; b[0] === 0xFF &amp;&amp; b[1] === 0xFE) return { text: utf16Decode(b, 2, true), encoding: "UTF-16 LE (BOM)" };
+  if (b.length &gt;= 2 &amp;&amp; b[0] === 0xFE &amp;&amp; b[1] === 0xFF) return { text: utf16Decode(b, 2, false), encoding: "UTF-16 BE (BOM)" };
+  const u = utf8Strict(b, 0);
+  if (u !== null) return { text: u, encoding: "UTF-8" };
+  return { text: cp1250Decode(b), encoding: "Windows-1250" };
+}
+
+return items.map(function (item) {
+  const bin = item.binary &amp;&amp; item.binary.data;
+  if (!bin || typeof bin.data !== "string") {
+    throw new Error("Decode CSV bytes: no file on the incoming item. Connect a Read/Write File node first, so the file arrives as the binary property data.");
+  }
+  const decoded = decodeBytes(b64ToBytes(bin.data));
+  const utf8 = utf8Encode(decoded.text);
+  const json = {};
+  Object.keys(item.json || {}).forEach(function (k) { json[k] = item.json[k]; });
+  json.lfEncoding = decoded.encoding;
+  const binary = {};
+  Object.keys(item.binary || {}).forEach(function (k) { binary[k] = item.binary[k]; });
+  binary.data = {};
+  Object.keys(bin).forEach(function (k) { binary.data[k] = bin[k]; });
+  binary.data.data = bytesToB64(utf8);
+  binary.data.mimeType = "text/csv";
+  binary.data.fileSize = utf8.length;
+  return { json: json, binary: binary };
+});
+</code></pre>
+<p class="muted">This is the exact node shipped in workflow 01 of the LeadFlow pack, not a sketch of one. It is plain ES5-style JavaScript on purpose: n8n's Code sandbox does not guarantee <code>Buffer</code>, <code>TextDecoder</code> or <code>atob</code>, so the base64 and UTF-8 codecs are inline. No network call, no dependency, no credential.</p>
+
+<h2>Check that it worked</h2>
+<div class="box"><ul>
+<li>The node's output JSON now carries <code>lfEncoding</code>: <code>UTF-8</code>, <code>UTF-8 (BOM)</code>, <code>UTF-16 LE (BOM)</code> or <code>Windows-1250</code>.</li>
+<li>A file reported as <b>Windows-1250</b> is the case this page is about - run the import and the diacritics should survive into the sheet.</li>
+<li>If a file you know is UTF-8 reports <b>Windows-1250</b>, the damage happened upstream: something already wrote mojibake into the bytes, and decoding again cannot undo it.</li>
+</ul></div>
+
+<h2>If you would rather not touch n8n at all</h2>
+<p>One file, one repair, no install: the <a href="studio.html">free browser CSV repair</a> decodes the real encoding, dedupes, and gives back a CSV that Excel reopens correctly (it writes a BOM for exactly that reason). It runs entirely in your tab - the file is never uploaded, because there is no server to upload it to.</p>
+
+<h2>What this page does not fix</h2>
+<div class="box honest"><ul>
+<li><b>Cyrillic, Greek, Turkish, Japanese.</b> Detection stops at Windows-1250. A Windows-1251 export will come out wrong, and the honest answer is a 1251-aware conversion, not this node.</li>
+<li><b>Word's curly quotes and dashes.</b> A Windows-1252 file that is not valid UTF-8 decodes here as 1250: ASCII survives, the punctuation does not. In a lead CSV the punctuation is usually not what you needed anyway.</li>
+<li><b>A parser problem posing as an encoding problem.</b> If the letters are right but the columns are wrong, you have a delimiter or quote issue: the <a href="docs.html">troubleshooting page</a> covers that separately.</li>
+</ul></div>
+
+<h2>The workflow this node lives in</h2>
+<div class="box">
+<p>The decode step is one node of <b>workflow 01 (CSV to Google Sheets)</b> in the LeadFlow Automation Pack: import, dedupe by email, normalise headers (including <code>Ime</code>, <code>Prezime</code>, <code>E-mail adresa</code>), then write to the sheet. The pack is four workflows, a zero-setup demo that runs with no credential, the setup guide, the delivery script and the troubleshooting page.</p>
+<p><a class="btn" href="https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=dragana.karans%40gmail.com&item_name=LeadFlow%20Automation%20Pack&amount=49.00&currency_code=USD&return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fthanks.html&cancel_return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fn8n-csv-encoding.html" rel="noopener">Get the pack - $49 launch</a> <a class="btn ghost" href="demo.html">Run the demo first</a></p>
+<p class="muted">$49 launch price (standard $79), one-time, commercial licence, 14-day refund on request. Files are sent by reply after payment, normally the same day. Not sure which option fits your file? Write to <a href="mailto:dragana.karans@gmail.com?subject=CSV%20encoding%20question">dragana.karans@gmail.com</a> before you pay - and if the button will not open, that address is the fallback.</p>
+</div>
+
+<h2>FAQ</h2>
+<div class="box"><p><b>Why does n8n show question marks when Google Sheets shows the names correctly?</b></p><p style="margin-top:6px">Google Sheets sniffs the bytes and n8n does not. Excel on a Serbian, Croatian, Polish, Czech or Hungarian Windows writes CSV in Windows-1250, while the n8n Extract from File node decodes the file as UTF-8. Every byte above 0x7F that is not valid UTF-8 becomes a question mark, and that is what reaches the sheet.</p></div>
+<div class="box"><p><b>Is the CSV node itself at fault?</b></p><p style="margin-top:6px">No. The parser does its job on the text it was handed; the file was decoded before it got there. A decode step between the file node and the parser is the fix. Changing delimiter or quote options will not bring the letters back, because the bytes are already gone.</p></div>
+<div class="box"><p><b>Do I have to use a Code node?</b></p><p style="margin-top:6px">If your own system writes the file, save it as CSV UTF-8 (in Excel that is the CSV UTF-8 (Comma delimited) option) and skip the node. If the file arrives from somebody else Excel, their export is Windows-1250 and you cannot control it - the node is the reliable option.</p></div>
+<div class="box"><p><b>Does it handle Cyrillic, Greek or Japanese CSV?</b></p><p style="margin-top:6px">No, and it will not pretend to. Detection is BOM, then strict UTF-8, then Windows-1250. A Windows-1251 Cyrillic export is decoded as 1250 and the letters come out wrong - use a Cyrillic-aware conversion, or ask the sender for a UTF-8 export.</p></div>
+<div class="box"><p><b>Does the node send my file anywhere?</b></p><p style="margin-top:6px">No. It is plain JavaScript inside your own n8n Code node: it reads the binary property, rewrites it as UTF-8 and returns it. No network call, no API key, no dependency.</p></div>
+
+<div class="footer">LeadFlow Automation Pack &middot; n8n workflows &middot; <a href="./">the pack</a> &middot; <a href="studio.html">free CSV repair</a> &middot; <a href="docs.html">documentation</a></div>
+</div></body></html>
