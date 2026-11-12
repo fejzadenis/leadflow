@@ -442,6 +442,8 @@ function lfPatternsCsv(result) {
   return lfToCsv(['full_name', 'company', 'domain', 'pattern', 'status'], rows);
 }
 
+var LF_STUDIO_URL = 'https://fejzadenis.github.io/leadflow/studio.html';
+
 function lfReport(result) {
   var s = result.summary;
   var lines = [
@@ -466,6 +468,15 @@ function lfReport(result) {
     lines.push('- ' + l.full_name + ' (' + l.domain + '): ' + (l.email_patterns || []).join(', '));
   });
   lines.push('', 'Patterns are candidates. Verify each address before sending. This report was produced in a browser with no network access.');
+
+  // The report is the only artifact of a free run that travels: it is attached to a mail, dropped in a
+  // shared folder or forwarded to whoever asked for the list. Until now it was inert - a colleague
+  // holding this file could not reach the tool that produced it, or buy the repair. Two lines, no
+  // tracking, no network call: where the file came from, and what to do when the export still fails.
+  lines.push('', '---',
+    'Made with LeadFlow Studio - free, runs in your browser, nothing uploaded:',
+    LF_STUDIO_URL,
+    'One export still will not import? A person fixes it and sends back the cleaned file plus this report within 24 hours: $49 for up to 5,000 rows - same link.');
   return lines.join('\n') + '\n';
 }
 
