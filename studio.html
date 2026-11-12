@@ -61,7 +61,7 @@ a{color:#8fb7ff}
     <button id="d3" class="ghost" disabled>Download report</button>
   </div>
   <p class="hint" id="mailnow">No time to run it here? Email the file to <a href="mailto:perun.intelligence@gmail.com?subject=My%20CSV%20will%20not%20import&body=Row%20count%3A%20%0D%0AWhat%20my%20import%20says%3A%20%0D%0AImport%20tool%20%28n8n%2FHubSpot%2FPipedrive%2FMailchimp%2Fother%29%3A%20%0D%0A%0D%0AI%20will%20attach%20the%20file%20once%20you%20reply.">perun.intelligence@gmail.com</a> with the row count and the error your import shows - the first answer is free, before any payment. A person reads it, not a form.</p>
-  <p class="hint" id="bookhint">An <b>.xlsx / .xls</b> workbook is not a CSV (it is a zip of XML parts) - if you pick one, this page tells you how to save it as CSV in three clicks instead of pretending to read it.</p>
+  <p class="hint" id="bookhint">An <b>.xlsx</b> workbook is read directly: the first worksheet is unzipped in this tab and its rows go through the same cleaner, still with no upload. <b>.xls</b> (Excel 97-2003) and <b>.ods</b> are different containers and are not read here - if you pick one, the page says how to save it as CSV in three clicks.</p>
   <p class="hint">Needs an <b>email</b> column &mdash; <i>Email</i>, <i>Email - Work</i> (Pipedrive) and <i>Work Email</i> (HubSpot) all count. Name, company and topic are used when present; <i>Firstname/Lastname</i>, <i>Organization</i> and <i>Note</i> are recognised too. Comma, semicolon and tab-separated files work, including a straight copy-paste from Excel or Google Sheets. A file saved by Excel itself (UTF-8, UTF-16 or Windows-1250/1252) is decoded by its real encoding rather than guessed as UTF-8, and the cleaned CSV downloads with a BOM so Excel opens it without mangling names.</p>
   <p class="hint" id="enc" hidden></p>
 </div>
@@ -549,6 +549,143 @@ function lfWorkbookMessage(kind, fileName) {
     '<a href="mailto:perun.intelligence@gmail.com?subject=LeadFlow%20-%20my%20workbook">perun.intelligence@gmail.com</a> and converting it is part of the <b>$49</b> clean-up (up to 5,000 rows, back within 24h).';
 }
 
+// 2026-11-13 - the workbook was named, never read. The page refused the file that a small business
+// actually has (\".xlsx is a zip, save it as CSV first\") while the paid promise on the same page says
+// converting a workbook is part of the $49 clean-up. So the visitor was asked to do by hand the one
+// thing the product sells. The first worksheet is now unzipped and parsed in the tab: no upload, no
+// library, no network call, and the rows go through the same cleaner as a pasted CSV. .xls (1997-2003)
+// and .ods stay named-only - different containers, and saying so is honest.
+function lfU16(b, i) { return b[i] | (b[i + 1] << 8); }
+function lfU32(b, i) { return (b[i] | (b[i + 1] << 8) | (b[i + 2] << 16) | (b[i + 3] << 24)) >>> 0; }
+function lfU8Text(b, from, len) { var s = ''; for (var i = 0; i < len; i++) s += String.fromCharCode(b[from + i]); return s; }
+function lfText(u8) { return new TextDecoder('utf-8').decode(u8); }
+
+// Central-directory walk: the only reliable way to list a zip's members (local headers can lie about
+// sizes when a data descriptor is used, which is what every exported workbook does).
+function lfZipEntries(b) {
+  var eocd = -1;
+  for (var i = b.length - 22; i >= 0 && i >= b.length - 65558; i--) {
+    if (b[i] === 0x50 && b[i + 1] === 0x4b && b[i + 2] === 0x05 && b[i + 3] === 0x06) { eocd = i; break; }
+  }
+  if (eocd < 0) return null;
+  var count = lfU16(b, eocd + 10), p = lfU32(b, eocd + 16), out = [];
+  if (p <= 0 || p >= b.length) return null;
+  for (var n = 0; n < count; n++) {
+    if (lfU32(b, p) !== 0x02014b50) break;
+    var nameLen = lfU16(b, p + 28);
+    out.push({
+      name: lfU8Text(b, p + 46, nameLen),
+      method: lfU16(b, p + 10),
+      comp: lfU32(b, p + 20),
+      local: lfU32(b, p + 42)
+    });
+    p += 46 + nameLen + lfU16(b, p + 30) + lfU16(b, p + 32);
+  }
+  return out.length ? out : null;
+}
+
+function lfZipBytes(b, entry, inflateRaw) {
+  var l = entry.local;
+  if (lfU32(b, l) !== 0x04034b50) return null;
+  var start = l + 30 + lfU16(b, l + 26) + lfU16(b, l + 28);
+  var raw = b.slice(start, start + entry.comp);
+  if (entry.method === 0) return raw;
+  if (entry.method === 8) return inflateRaw(raw);
+  return null;
+}
+
+function lfAttrs(s) {
+  var o = {}, re = /([A-Za-z:]+)\s*=\s*"([^"]*)"/g, m;
+  while ((m = re.exec(s))) o[m[1]] = m[2];
+  return o;
+}
+function lfUnesc(s) {
+  return String(s).replace(/&#x([0-9a-f]+);/gi, function (_, h) { return String.fromCharCode(parseInt(h, 16)); })
+    .replace(/&#(\d+);/g, function (_, d) { return String.fromCharCode(Number(d)); })
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+// A1-style reference -> zero-based column. "A" is 0, "Z" 25, "AA" 26.
+function lfColIndex(ref) {
+  var m = /^([A-Za-z]+)/.exec(String(ref || ''));
+  if (!m) return -1;
+  var n = 0, s = m[1].toUpperCase();
+  for (var i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64);
+  return n - 1;
+}
+// A shared string may be split over several <t> runs (rich text); they concatenate into one cell.
+function lfSharedStrings(xml) {
+  var out = [], re = /<si\b[^>]*>([\s\S]*?)<\/si>/g, m;
+  while ((m = re.exec(xml))) {
+    var t = '', tr = /<t\b[^>]*>([\s\S]*?)<\/t>/g, q;
+    while ((q = tr.exec(m[1]))) t += lfUnesc(q[1]);
+    out.push(t);
+  }
+  return out;
+}
+function lfSheetRows(xml, shared) {
+  var rows = [], re = /<row\b[^>]*>([\s\S]*?)<\/row>/g, m;
+  while ((m = re.exec(xml))) {
+    var cells = [], cr = /<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, c;
+    while ((c = cr.exec(m[1]))) {
+      var at = lfAttrs(c[1]), idx = lfColIndex(at.r);
+      if (idx < 0) idx = cells.length;
+      var body = c[2] || '', vm = /<v\b[^>]*>([\s\S]*?)<\/v>/.exec(body), val = '';
+      if (at.t === 's') { if (vm) val = shared[Number(vm[1])] || ''; }
+      else if (at.t === 'inlineStr') { var im = /<t\b[^>]*>([\s\S]*?)<\/t>/.exec(body); val = im ? lfUnesc(im[1]) : ''; }
+      else if (vm) { val = lfUnesc(vm[1]); }
+      cells[idx] = val;
+    }
+    rows.push(cells);
+  }
+  return rows;
+}
+function lfRowsToCsv(rows) {
+  var width = 0, i, j;
+  for (i = 0; i < rows.length; i++) width = Math.max(width, rows[i] ? rows[i].length : 0);
+  var lines = [];
+  for (i = 0; i < rows.length; i++) {
+    var cells = [];
+    for (j = 0; j < width; j++) {
+      var v = rows[i] && rows[i][j] != null ? String(rows[i][j]) : '';
+      cells.push(/[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v);
+    }
+    lines.push(cells.join(','));
+  }
+  while (lines.length && !lines[lines.length - 1].replace(/,/g, '').trim()) lines.pop();
+  return lines.join('\n');
+}
+// Resolves to { csv, rows, sheet } or { error }: never throws on a file it cannot read, so the page
+// can always fall back to the three-click "Save as CSV" advice instead of a blank screen.
+async function lfXlsxToCsv(b, inflateRaw) {
+  var entries = lfZipEntries(b);
+  if (!entries) return { error: 'no zip directory (not an .xlsx container)' };
+  var byName = {};
+  entries.forEach(function (e) { byName[e.name.toLowerCase()] = e; });
+  var sheetKey = 'xl/worksheets/sheet1.xml';
+  if (!byName[sheetKey]) {
+    var first = entries.filter(function (e) { return /^xl\/worksheets\/[^/]+\.xml$/.test(e.name.toLowerCase()); })[0];
+    if (!first) return { error: 'no worksheet inside the workbook' };
+    sheetKey = first.name.toLowerCase();
+  }
+  var shared = [];
+  if (byName['xl/sharedstrings.xml']) {
+    var ss = await lfZipBytes(b, byName['xl/sharedstrings.xml'], inflateRaw);
+    if (ss) shared = lfSharedStrings(lfText(ss));
+  }
+  var sx = await lfZipBytes(b, byName[sheetKey], inflateRaw);
+  if (!sx) return { error: 'could not unpack the worksheet' };
+  var rows = lfSheetRows(lfText(sx), shared);
+  if (!rows.length) return { error: 'the first worksheet is empty' };
+  return { csv: lfRowsToCsv(rows), rows: rows.length, sheet: sheetKey.split('/').pop().replace(/\.xml$/, '') };
+}
+// deflate-raw is all an .xlsx entry ever uses, and the browser already ships the inflater.
+function lfInflateRaw(bytes) {
+  if (typeof DecompressionStream === 'undefined') return Promise.reject(new Error('this browser cannot unzip'));
+  return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw')))
+    .arrayBuffer().then(function (ab) { return new Uint8Array(ab); });
+}
+
 // The row count is the only fact this page knows about the buyer's own file before they pay, and it
 // is what decides the price. A 12,000-row export was told "a repair is $49 for up to 5,000 rows",
 // so the honest buyer either underpaid into a tier that does not cover their file or left to
@@ -678,6 +815,22 @@ function lfShowEncoding(decoded, fileName) {
     'The cleaned file downloads as UTF-8 with a BOM, so Excel opens it correctly too.';
 }
 
+// One place that says "this file could not be read as a table", so the fallback advice is identical
+// whether the workbook is .xls, .ods, or an .xlsx whose first sheet would not unpack.
+function lfShowWorkbook(kind, fileName, why) {
+  LF_OUT = null;
+  document.getElementById('csv').value = '';
+  document.getElementById('summary').innerHTML = '<p class="hint">Nothing run: a workbook was picked, not a CSV.</p>';
+  document.getElementById('rejected').innerHTML = '';
+  ['d1', 'd2', 'd3'].forEach(function (id) { document.getElementById(id).disabled = true; });
+  var box = document.getElementById('enc');
+  if (box) {
+    box.hidden = false;
+    box.innerHTML = (why ? '<b class="bad">Could not read ' + esc(fileName) + ' (' + esc(why) + ').</b> ' : '') +
+      lfWorkbookMessage(kind, fileName);
+  }
+}
+
 document.getElementById('file').addEventListener('change', function (ev) {
   var f = ev.target.files && ev.target.files[0];
   if (!f) return;
@@ -685,16 +838,22 @@ document.getElementById('file').addEventListener('change', function (ev) {
   rd.onload = function () {
     var bytes = new Uint8Array(rd.result);
     var kind = lfSniffWorkbook(bytes, f.name);
-    if (kind) {
-      LF_OUT = null;
-      document.getElementById('csv').value = '';
-      document.getElementById('summary').innerHTML = '<p class="hint">Nothing run: a workbook was picked, not a CSV.</p>';
-      document.getElementById('rejected').innerHTML = '';
-      ['d1', 'd2', 'd3'].forEach(function (id) { document.getElementById(id).disabled = true; });
-      var box = document.getElementById('enc');
-      if (box) { box.hidden = false; box.innerHTML = lfWorkbookMessage(kind, f.name); }
+    if (kind === 'xlsx') {
+      lfXlsxToCsv(bytes, lfInflateRaw).then(function (res) {
+        if (!res || !res.csv) { lfShowWorkbook(kind, f.name, res && res.error); return; }
+        document.getElementById('csv').value = res.csv;
+        var box = document.getElementById('enc');
+        if (box) {
+          box.hidden = false;
+          box.innerHTML = 'Read <b>' + esc(res.rows) + ' rows</b> from worksheet <b>' + esc(res.sheet) +
+            '</b> of <b>' + esc(f.name) + '</b> &mdash; unzipped inside this tab, nothing uploaded. ' +
+            'The rows below are the cleaner\'s view of that sheet; the workbook itself never leaves your computer.';
+        }
+        renderStudio();
+      }).catch(function (err) { lfShowWorkbook(kind, f.name, err && err.message); });
       return;
     }
+    if (kind) { lfShowWorkbook(kind, f.name); return; }
     var decoded = lfDecodeBytes(bytes);
     var text = String(decoded.text || '').replace(/^\uFEFF/, '');
     document.getElementById('csv').value = text;
