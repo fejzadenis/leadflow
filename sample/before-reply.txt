@@ -1,0 +1,9 @@
+Here is your list back, Example export - 7 usable of 12 rows.
+
+7 clean leads, 5 removed with a reason for each, 31 candidate email patterns and 7 first-touch drafts. Nothing was sent, and I kept no copy of your file - the cleaned CSV is attached.
+
+The removals are worth a look: marko petrovic (duplicate of marko.petrovic@petroco.rs); Ana Jovanovic (duplicate of ana@nova.rs); Stefan Đokić (no email: "stefan(at)dokic.rs"); +2 more.
+
+This is the same step the pack does on import, except it writes into your own Google Sheet instead of a file. If it saves you an afternoon, it is $49 one-time (launch price, $79 after) - no subscription, 14-day refund.
+
+[your name]
