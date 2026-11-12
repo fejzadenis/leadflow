@@ -69,6 +69,7 @@ a{color:#8fb7ff}
   <div class="lbl">2 - What came out</div>
   <div id="summary"><p class="hint">Nothing run yet.</p></div>
   <div id="rejected"></div>
+  <p class="hint" id="ask" hidden></p>
 </div>
 
 <div class="card">
@@ -563,6 +564,8 @@ function renderStudio() {
   } catch (err) {
     box.innerHTML = '<span class="badge">' + esc(err.message) + '</span>';
     rej.innerHTML = '';
+    var askErr = document.getElementById('ask');
+    if (askErr) askErr.hidden = true;
     LF_OUT = null;
     ['d1', 'd2', 'd3'].forEach(function (id) { document.getElementById(id).disabled = true; });
     return;
@@ -587,6 +590,19 @@ function renderStudio() {
     rej.innerHTML = '<p class="hint">Nothing rejected.</p>';
   }
   ['d1', 'd2', 'd3'].forEach(function (id) { document.getElementById(id).disabled = false; });
+  var ask = document.getElementById('ask');
+  if (ask) {
+    var total = s.leads_clean + result.rejected.length;
+    var subject = 'My CSV still will not import: ' + total + ' rows, ' + result.rejected.length + ' dropped';
+    var body = 'The free cleaner read ' + total + ' rows, kept ' + s.leads_clean + ' and dropped ' + result.rejected.length + '.\n' +
+      'My import still says: (paste the exact error here)\n' +
+      'The import tool is: (n8n / HubSpot / Pipedrive / Mailchimp / other)\n' +
+      'File: I will attach it after you reply\n';
+    ask.hidden = false;
+    ask.innerHTML = 'If your import still rejects this file after cleaning, that is the one job rules cannot decide. ' +
+      '<a href="mailto:dragana.karans@gmail.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body) + '">Send it to a person</a> ' +
+      'with the error your import shows. The first answer is free; a repair is $49 for up to 5,000 rows, back within 24 hours. Nothing is attached until you attach it yourself.';
+  }
 }
 
 document.getElementById('run').addEventListener('click', renderStudio);
