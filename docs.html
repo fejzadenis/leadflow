@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LeadFlow pack documentation - read it before you buy (n8n lead generation)</title>
+<meta name="description" content="The full documentation that ships in the LeadFlow pack: what the four n8n workflows do, the 15-minute setup, the 2-minute demo, and the troubleshooting page written from real failures. Published unedited.">
+<link rel="canonical" href="https://fejzadenis.github.io/leadflow/docs.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="LeadFlow">
+<meta property="og:url" content="https://fejzadenis.github.io/leadflow/docs.html">
+<meta property="og:title" content="LeadFlow pack documentation - read it before you buy">
+<meta property="og:description" content="The shipped README, setup steps, demo script and troubleshooting page - published unedited so you can judge the pack before paying.">
+<meta property="og:image" content="https://fejzadenis.github.io/leadflow/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://fejzadenis.github.io/leadflow/og.png">
+<meta name="robots" content="index,follow">
+<style>:root{--bg:#0b0f14;--card:#131a22;--text:#e6edf3;--muted:#8b98a9;--accent:#4f8cff;--border:#22303c}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;padding:34px 18px 64px}
+.wrap{max-width:860px;margin:0 auto}
+.badge{display:inline-block;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;color:#b9d0ff;border:1px solid rgba(79,140,255,.45);background:rgba(79,140,255,.12);border-radius:999px;padding:4px 11px}
+h1{font-size:30px;line-height:1.2;letter-spacing:-.4px;margin-top:14px}
+.lede{color:var(--muted);font-size:15px;margin-top:12px}
+.lede code{font-size:13px}
+.btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+a.btn{display:inline-block;text-decoration:none;border-radius:9px;padding:11px 18px;font-size:14.5px;font-weight:600;background:var(--accent);color:#fff}
+a.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text);font-weight:500}
+.toc{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-top:26px}
+.toc p{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.toc a{display:block;color:#8fb7ff;text-decoration:none;font-size:14px;padding:3px 0}
+.doc{border-top:1px solid var(--border);margin-top:30px;padding-top:6px}
+h2{font-size:21px;letter-spacing:-.3px;margin:26px 0 10px}
+h3{font-size:16px;margin:22px 0 8px}
+h4{font-size:14.5px;margin:18px 0 6px;color:#cfdae6}
+p{font-size:14.2px;margin:9px 0}
+ul,ol{margin:9px 0 9px 22px}
+li{font-size:14.2px;padding:2px 0}
+li.sub{margin-left:14px;list-style:circle}
+code{font-family:Consolas,monospace;font-size:12.6px;background:#0e151c;border:1px solid #1d2833;border-radius:5px;padding:1px 5px;color:#c8e1ff}
+pre{background:#0e151c;border:1px solid #1d2833;border-radius:9px;padding:13px 15px;overflow:auto;margin:12px 0}
+pre code{border:0;background:none;padding:0;font-size:12.4px;line-height:1.5}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.4px}
+th,td{text-align:left;border-bottom:1px solid var(--border);padding:7px 9px;vertical-align:top}
+th{color:#b9c8d8;font-weight:600;font-size:12.4px;text-transform:uppercase;letter-spacing:.6px}
+blockquote{border-left:2px solid var(--accent);padding-left:12px;color:var(--muted);margin:10px 0}
+a{color:#8fb7ff}
+.foot{color:var(--muted);font-size:12.6px;margin-top:34px;line-height:1.75;border-top:1px solid var(--border);padding-top:16px}</style></head><body><div class="wrap">
+<span class="badge">shipped documentation &middot; published unedited</span>
+<h1>Read the pack before you buy it</h1>
+<p class="lede">This is the documentation that ships inside the ZIP &mdash; the same README, the same start-here steps, the same troubleshooting page written from our own failed runs. Generated from the shipping files (<code id="provenance" data-sha="5d3ab01104e6eb73e340545f206bf7db3796d5a3cb85335b6b7467f9ce0d73d7">sha256 5d3ab01104e6</code>) by <code>make-docs.mjs</code>, not retyped; the site build fails if these files change and this page does not.</p>
+<div class="btns">
+<a class="btn" href="demo.html">Run the live demo (no install)</a>
+<a class="btn ghost" href="./">Get the pack &mdash; $49 launch</a>
+<a class="btn ghost" href="studio.html">Clean a CSV free, no n8n</a>
+</div>
+<div class="toc"><p>On this page</p><a href="#leadflow-automation-pack-n8n">LeadFlow Automation Pack (n8n)</a><a href="#start-here-leadflow-automation-pack">START HERE — LeadFlow Automation Pack</a><a href="#demo-md-2-minute-walkthrough-of-leadflow">DEMO.md — 2-minute walkthrough of LeadFlow</a><a href="#install-running-n8n-for-this-pack">INSTALL — running n8n for this pack</a><a href="#troubleshooting-leadflow-automation-pack">TROUBLESHOOTING — LeadFlow Automation Pack</a></div>
+<section class="doc">
+<h2 id="leadflow-automation-pack-n8n">LeadFlow Automation Pack (n8n)</h2>
+<p>Four ready-to-import n8n workflows for B2B lead generation — compliant by design (no LinkedIn scraping, no account bans) — plus a zero-setup demo that runs with no credentials.</p>
+<h3 id="what-s-inside">What's inside</h3>
+<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td>workflows/00-quick-demo.json</td><td>Zero-setup demo: 6 messy rows → clean leads, patterns, drafts (no credentials, no network)</td></tr><tr><td>workflows/01-lead-import-csv.json</td><td>CSV → dedupe by email → Google Sheets</td></tr><tr><td>workflows/02-webhook-lead-capture.json</td><td>Webhook (any form) → Google Sheets</td></tr><tr><td>workflows/03-ai-email-drafter.json</td><td>Leads → AI-personalized email drafts (DeepSeek) → Google Sheets</td></tr><tr><td>workflows/04-email-patterns.json</td><td>Leads → generate candidate email patterns (FREE, no API) → Google Sheets</td></tr></tbody></table>
+<h3 id="requirements">Requirements</h3>
+<ul><li>n8n (self-hosted Community = free, or n8n Cloud).</li><li>Google account (Sheets) + a Google Sheets OAuth2 credential in n8n.</li><li>DeepSeek API key — ONLY for workflow 03. In n8n: Credentials → New → Header Auth: Name = Authorization, Value = Bearer &lt;your_key&gt;.</li></ul>
+<h3 id="setup">Setup</h3>
+<ol><li>Prove it runs first: import <code>workflows/00-quick-demo.json</code> and Execute it — no credentials, nothing written. Then configure the rest.</li><li>n8n → Workflows → Import from File → choose each JSON.</li><li>In your Google Sheet create three tabs: <code>Sheet1</code> (your leads), <code>Drafts</code> (03 writes here), <code>Email Patterns</code> (04 writes here). Output tabs are separate on purpose — re-running a workflow can never treat generated rows as fresh leads.</li><li>Open each Google Sheets node → replace the placeholder spreadsheet (<code>YOUR_GOOGLE_SHEET_ID</code>) with your file, pick the tab listed above, then choose your Google Sheets credential.</li><li>Workflow 03 → select your DeepSeek (Header Auth) credential.</li><li>Save, then click <strong>Execute workflow</strong> (each workflow starts from a Manual Trigger; #02 starts from its Webhook).</li><li>Workflow 01's <code>Load CSV</code> node is preset to <code>/home/node/.n8n-files/sample-data/leads-sample.csv</code>, which the shipped Docker compose (<code>setup/</code>) mounts read-only - run it as imported. On npm or your own compose, n8n 2.x restricts file access to <code>~/.n8n-files</code> (<code>N8N_RESTRICT_FILE_ACCESS_TO</code>): copy the CSV there or widen the variable, then point the node at your path. On n8n Cloud, file reads are limited to <code>/home/node</code>, so run 01 self-hosted and start Cloud users on 02/03/04.</li></ol>
+<h3 id="credentials-needed">Credentials needed</h3>
+<ul><li>Google Sheets: OAuth2.</li><li>DeepSeek: Header Auth 'Authorization: Bearer &lt;key&gt;' (workflow 03 only).</li></ul>
+<h3 id="limitations">Limitations</h3>
+<ul><li>No LinkedIn scraping; leads come from your own CSV/forms.</li><li>Dedupe in workflow 01 works <strong>inside one import</strong>: the same address twice in your CSV is one lead. It does not read rows already in the sheet, so importing the same file twice against the same tab appends it twice - import into a fresh tab if you re-run a file.</li><li>Workflow 03 writes email DRAFTS to a sheet; it does NOT send email.</li><li>Workflow 04 generates candidate email patterns (unverified) — verify before sending.</li><li>03 and 04 write to their own tabs (<code>Drafts</code>, <code>Email Patterns</code>) and skip rows that are already drafted/enriched, so re-runs are safe and idempotent.</li><li>Workflow 04 normalizes accented letters in names (e.g. 'Kovač' → 'kovac') and drops duplicates, so generated patterns are always valid local parts.</li><li>The target Google sheet must already exist; the sheet tab name is locale-dependent (e.g. 'Sheet1' or 'Лист1').</li></ul>
+<h3 id="troubleshooting">Troubleshooting</h3>
+<ul><li>Setup errors (sheet not found, credential missing, 03 → 401, CSV path) are covered in TROUBLESHOOTING.md.</li></ul>
+<h3 id="costs">Costs</h3>
+<ul><li>n8n self-hosted: $0. Google Sheets: $0.</li><li>DeepSeek: ~$0.50 per 1M tokens (negligible at normal volume).</li></ul>
+<h3 id="testing-status-verified-2026-11-11">Testing status (verified 2026-11-11)</h3>
+<ul><li>Google Sheets: create + append + read-back verified.</li><li>Dedupe: 3 rows → 2 verified.</li><li>Workflow 03: real AI draft generated and verified.</li><li>Workflow 04: 10 email patterns generated from 2 leads verified.</li><li>All 4 workflow JSON files: valid, correct nodes, no secrets, no owner credentials/sheet IDs, each has a runnable trigger, and no node type that n8n has retired (checked on every build by <code>verify-pack.ps1</code>; workflow 01 uses <code>readWriteFile</code> + <code>extractFromFile</code>, the current replacements for the deprecated Read Binary Files / Spreadsheet File nodes).</li></ul>
+</section>
+<section class="doc">
+<h2 id="start-here-leadflow-automation-pack">START HERE — LeadFlow Automation Pack</h2>
+<h3 id="what-it-is">What it is</h3>
+<p>4 importable n8n workflows for compliant B2B lead generation (no LinkedIn scraping, no account bans), plus a zero-setup demo that proves your n8n runs the pack before you connect anything.</p>
+<h3 id="60-second-proof-no-setup-at-all">60-second proof (no setup at all)</h3>
+<ol><li>Import <code>workflows/00-quick-demo.json</code>.</li><li>Click <strong>Execute workflow</strong> on the node named <code>Start - click Execute workflow</code>.</li><li>Open the last node, <code>Summary - what just happened</code>: 6 messy sample rows -&gt; 3 clean leads, 15 email patterns, 3 drafted emails, <strong>0 emails sent</strong>, <strong>0 network calls</strong>, <strong>no credentials used</strong>.</li></ol>
+<p>It runs entirely in Code nodes: it reads no file, writes nothing, calls nothing. If this works, your n8n can run the pack. The other four workflows add Google Sheets as storage.</p>
+<h3 id="15-minute-setup">15-minute setup</h3>
+<ol><li>Have n8n ready — self-hosted Community is free (install guide: <code>setup/INSTALL.md</code>) or use n8n Cloud.</li><li>In n8n: <strong>Workflows → Import from File</strong> → import the four workflow files (<code>01</code>–<code>04</code>) in <code>workflows/</code>.</li><li>Create a Google Sheet with these headers on a tab named <code>Sheet1</code>: <code>firstName, lastName, company, domain, email, topic</code>. Add two more empty tabs: <code>Drafts</code> (workflow 03 output) and <code>Email Patterns</code> (workflow 04 output).</li><li>Add a Google Sheets <strong>OAuth2</strong> credential in n8n; in each Google Sheets node select your spreadsheet + the tab named above.</li><li>(Workflow 03 only) Add a <strong>Header Auth</strong> credential: Name = <code>Authorization</code>, Value = <code>Bearer &lt;your DeepSeek key&gt;</code>.</li><li>Open a workflow → click <strong>Execute workflow</strong> (01/03/04 start from a Manual Trigger, 02 from its Webhook).</li></ol>
+<h3 id="try-it-with-the-sample-data">Try it with the sample data</h3>
+<ul><li>Workflow 01 ('Load CSV' node): the path is preset to <code>/home/node/.n8n-files/sample-data/leads-sample.csv</code>, and the shipped Docker compose (<code>setup/docker-compose.yml</code>) mounts the pack's <code>sample-data/</code> exactly there, read-only — so the <strong>Docker route runs it as-is</strong>: set your sheet, Execute, expect deduped rows appended.</li><li class="sub">npm / your own n8n: n8n 2.x only lets the file nodes read inside <code>~/.n8n-files</code> (env <code>N8N_RESTRICT_FILE_ACCESS_TO</code>). Copy <code>sample-data/leads-sample.csv</code> into <code>~/.n8n-files/</code> and point the node at that absolute path, or widen the env var to the folder you keep it in.</li><li class="sub">n8n Cloud: file reads are limited to <code>/home/node</code>, so run 01 self-hosted (Docker/npm) - on Cloud, start from 02/03/04 with your leads already in the sheet.</li></ul>
+<h3 id="requirements-2">Requirements</h3>
+<ul><li>n8n, a Google account, and (only for workflow 03) a DeepSeek API key.</li></ul>
+<h3 id="limitations-2">Limitations</h3>
+<ul><li>No scraping; leads come from your own CSV/forms.</li><li>Workflow 03 writes DRAFTS to a sheet (it does not send email).</li><li>Workflow 04 generates candidate email patterns (unverified — verify before sending).</li></ul>
+<h3 id="docs">Docs</h3>
+<ul><li><code>README.md</code> (overview) · <code>DEMO.md</code> (2-min walkthrough) · <code>setup/INSTALL.md</code> (n8n install) · <code>TROUBLESHOOTING.md</code> (sheet, credentials, 401, CSV path, webhook, patterns).</li></ul>
+<h3 id="support-license">Support &amp; license</h3>
+<ul><li>Reply to your purchase email.</li><li>Terms, refunds (14 days), and usage rights: see <code>LICENSE.txt</code>.</li></ul>
+</section>
+<section class="doc">
+<h2 id="demo-md-2-minute-walkthrough-of-leadflow">DEMO.md — 2-minute walkthrough of LeadFlow</h2>
+<h3 id="prereqs">Prereqs</h3>
+<ul><li>n8n running (localhost:5678).</li><li>Google Sheets OAuth credential connected in n8n.</li><li>DeepSeek Header Auth credential (workflow 03 only).</li></ul>
+<h3 id="script">Script</h3>
+<ol><li><strong>00 Zero-setup demo:</strong> import 00-quick-demo.json, Execute → summary shows 6 messy rows → 3 clean leads, 15 patterns, 3 drafts, 0 sent, no credentials. Do this before connecting anything (no prereqs needed).</li><li><strong>01 CSV import:</strong> import 01-*.json, set Load CSV path to the sample, select your sheet, Execute → leads appear (deduped).</li><li><strong>02 Webhook:</strong> activate 02-*.json, POST {firstName,lastName,company,email} to the webhook URL → row appended.</li><li><strong>03 AI email:</strong> Execute on leads → personalized drafts written to a sheet. (Verified output: 'Hi Jane — I came across Acme Studio ...')</li><li><strong>04 Patterns:</strong> Execute → candidate emails (jane.doe@, janedoe@, j.doe@, jdoe@, jane@).</li></ol>
+<h3 id="verified-expected-outputs-2026-11-11">Verified expected outputs (2026-11-11)</h3>
+<ul><li>00: 6 messy rows → 3 clean (1 duplicate, 1 missing domain, 1 missing email rejected with reasons), 15 patterns, 3 drafts, 0 network calls (2026-11-12).</li><li>01: 6 input rows → 5 unique appended (dedupe confirmed).</li><li>03: real DeepSeek draft, values interpolated correctly.</li><li>04: 5 patterns per lead (10 from 2 leads).</li></ul>
+</section>
+<section class="doc">
+<h2 id="install-running-n8n-for-this-pack">INSTALL — running n8n for this pack</h2>
+<p>You need a working n8n instance. Any of these routes works; pick one.</p>
+<h3 id="route-a-n8n-cloud-fastest-no-server">Route A — n8n Cloud (fastest, no server)</h3>
+<ol><li>Create an account at n8n.cloud and open your instance.</li><li>Continue with <strong>START-HERE.md</strong> (<code>../START-HERE.md</code>).</li></ol>
+<h3 id="route-b-npm-local-no-docker">Route B — npm (local, no Docker)</h3>
+<ol><li><code>npm install -g n8n</code></li><li><code>n8n start</code></li><li>Open http://127.0.0.1:5678 (local only).</li></ol>
+<p>Notes: default DB is SQLite in <code>~/.n8n</code>. Requires Node.js 20+.</p>
+<h3 id="route-c-docker-compose-recommended-for-isolation">Route C — Docker Compose (recommended for isolation)</h3>
+<ol><li>Install Docker Desktop (or Docker Engine on Linux/WSL2).</li><li>In this <code>setup/</code> folder: copy <code>.env.example</code> to <code>.env</code> and set <code>N8N_ENCRYPTION_KEY</code> to any long random string (keep it — it decrypts your stored credentials).</li><li><code>docker compose up -d</code></li><li>Open http://127.0.0.1:5678.</li></ol>
+<p>Optional in <code>.env</code>: <code>GENERIC_TIMEZONE</code> (default UTC).</p>
+<p>The compose file already mounts this pack's <code>sample-data/</code> folder read-only at <code>/home/node/.n8n-files/sample-data</code> - inside the folder n8n 2.x allows file nodes to read by default (<code>N8N_RESTRICT_FILE_ACCESS_TO</code> defaults to <code>~/.n8n-files</code>). So workflow 01 reads its preset path without extra setup or env changes. Keep the compose file in <code>setup/</code> (the mount path is relative to it). For Route B (npm), copy <code>sample-data/leads-sample.csv</code> into <code>~/.n8n-files/</code> instead.</p>
+<h3 id="security-all-routes">Security (all routes)</h3>
+<ul><li>Bind to 127.0.0.1 only (never 0.0.0.0).</li><li>Do not expose n8n to the internet without auth + TLS in front of it.</li><li>Keep your DeepSeek key in an n8n credential, not in workflow JSON.</li></ul>
+<h3 id="after-n8n-is-running">After n8n is running</h3>
+<ul><li>Go to <code>../START-HERE.md</code> for the 15-minute pack setup.</li><li>Errors during setup: <code>../TROUBLESHOOTING.md</code>.</li></ul>
+</section>
+<section class="doc">
+<h2 id="troubleshooting-leadflow-automation-pack">TROUBLESHOOTING — LeadFlow Automation Pack</h2>
+<p>Every item below was hit (and fixed) during our own end-to-end testing. Check here before emailing support.</p>
+<h3 id="1-could-not-find-the-sheet-no-rows-appear">1. "Could not find the sheet" / no rows appear</h3>
+<ul><li>The target Google Sheet must already exist. The pack does not create spreadsheets.</li><li>Open each Google Sheets node -&gt; Document: pick your file by name -&gt; Sheet: pick the tab.</li><li>Tab names are locale-dependent: <code>Sheet1</code> on English accounts, <code>Лист1</code>/<code>Hoja1</code> elsewhere. A mismatch fails silently with 0 rows written.</li></ul>
+<h3 id="2-credential-errors-on-google-sheets-nodes">2. Credential errors on Google Sheets nodes</h3>
+<ul><li>Importing a workflow does <strong>not</strong> import credentials. Every Sheets node ships with the placeholder <code>YOUR_GOOGLE_SHEET_ID</code> and no credential selected.</li><li>After import, open the node -&gt; Credential -&gt; "Create new" (OAuth2) or select an existing one -&gt; sign in with the Google account that owns the sheet.</li><li>The sheet must be shared with that same account (or "Anyone with the link: Editor" for testing only).</li></ul>
+<h3 id="3-workflow-03-returns-http-401-from-api-deepseek">3. Workflow 03 returns HTTP 401 from api.deepseek.com</h3>
+<ul><li>401 means the API key itself is invalid, not the node. Verify the key at platform.deepseek.com (Billing must show a positive balance; free-tier keys expire).</li><li>Credential type must be <strong>Header Auth</strong>: Name = <code>Authorization</code>, Value = <code>Bearer sk-...</code> (the word "Bearer" plus one space, then the key). A missing "Bearer" prefix also yields 401.</li><li>Workflows 01, 02 and 04 need no API key. If 03 is blocked, the pack still delivers value.</li></ul>
+<h3 id="4-workflow-01-can-t-read-the-csv-enoent-or-acces">4. Workflow 01 can't read the CSV (ENOENT, or "Access to the file is not allowed")</h3>
+<p>Two different causes, same node - check which error you get.</p>
+<p><strong>"Access to the file is not allowed." (n8n 2.x, the default)</strong></p>
+<ul><li>n8n 2.x only lets file nodes read inside <code>~/.n8n-files</code> unless you change <code>N8N_RESTRICT_FILE_ACCESS_TO</code>. That is why our sample CSV is mounted at <code>/home/node/.n8n-files/sample-data/</code>, not at <code>/data/</code>.</li><li>Docker route (shipped <code>setup/docker-compose.yml</code>): nothing to do - the folder is mounted there read-only and the node is preset to it.</li><li>Your own compose file: add the same mount yourself (<code>- ./sample-data:/home/node/.n8n-files/sample-data:ro</code>).</li><li>npm / bare-metal: copy the CSV into <code>~/.n8n-files/</code>, or set <code>N8N_RESTRICT_FILE_ACCESS_TO</code> to the folder holding it, then point the node at that absolute path.</li><li><strong>n8n Cloud cannot read this file at all</strong> (reads are limited to <code>/home/node</code>). Run workflow 01 on self-hosted n8n, or skip the CSV step on Cloud and start from 02/03/04 with your leads already in the sheet.</li></ul>
+<p><strong>"ENOENT: no such file or directory"</strong></p>
+<ul><li>The path is read by the <strong>n8n process</strong>, not your laptop. It must exist inside the container (Docker) or on the host where n8n runs (npm).</li><li>Windows hosts: use forward slashes (<code>C:/Users/you/leads.csv</code>).</li><li>Header mismatch: the CSV columns must match the sheet columns (firstName, lastName, company, domain, email, topic).</li></ul>
+<h3 id="5-import-fails-workflow-looks-empty">5. Import fails / workflow looks empty</h3>
+<ul><li>Use a current n8n: the pack is built and tested on n8n 2.x (2.47.4). Old 1.x builds lack the <code>typeVersion</code> of some shipped nodes (Google Sheets 4.5, Read/Write Files 1.1, Extract from File 1.2).</li><li>Import each JSON separately (Workflows -&gt; Import from File); do not paste all four into one editor.</li></ul>
+<h3 id="6-workflow-02-webhook-does-nothing">6. Workflow 02 webhook does nothing</h3>
+<ul><li>Webhooks only listen when the workflow is <strong>Active</strong> (toggle top-right). Manual "Execute workflow" waits for one test call only.</li><li>Test URL is <code>/webhook-test/...</code>, production URL is <code>/webhook/...</code> - use the right one for the mode.</li></ul>
+<h3 id="7-workflow-04-emails-bounce">7. Workflow 04 emails bounce</h3>
+<ul><li>04 <strong>guesses</strong> patterns (<code>first.last@</code>, <code>firstlast@</code>, <code>f.last@</code>, <code>flast@</code>, <code>first@</code>). They are unverified.</li><li>Verify with your own SMTP check or a verification service before sending. Sending to guessed addresses hurts your domain reputation.</li></ul>
+<h3 id="8-re-running-03-or-04-fills-my-leads-tab-with-ju">8. Re-running 03 or 04 fills my leads tab with junk rows</h3>
+<ul><li>Older builds appended output onto the same tab they read from, so a second run treated generated drafts/patterns as new leads.</li><li>Current build writes to dedicated tabs (<code>Drafts</code>, <code>Email Patterns</code>) and skips rows that already carry a <code>draft</code> or <code>pattern</code> field. If you imported an older build, re-import 03/04 and re-point the append node at its own tab.</li><li>Importing a fresh copy is safe: nothing is overwritten, only new rows are appended.</li></ul>
+<h3 id="9-i-imported-the-same-csv-twice-and-my-leads-tab">9. I imported the same CSV twice and my leads tab now has duplicates</h3>
+<ul><li>Workflow 01 dedupes <strong>inside one import</strong>: the same address appearing twice in the CSV (different topic, upper case, stray spaces) becomes one row, and a row without an email is kept unless name + company repeat exactly.</li><li>It does <strong>not</strong> read the rows already in your sheet, so running the same file twice against the same tab appends it twice. If you re-run a file, import into a fresh tab, or delete the previously imported rows first.</li><li>Rows are passed through as they are in your CSV - the dedupe compares addresses trimmed and lowercased, it does not rewrite the cell value.</li></ul>
+<h3 id="still-stuck">Still stuck?</h3>
+<p>Reply to your purchase email with: n8n version, the failing workflow number, and the exact error text. Refund window and terms are in LICENSE.txt.</p>
+</section>
+<p class="foot"><b>What this page is not:</b> it is not the product. The ZIP contains the four importable workflow JSON files, the zero-setup demo workflow, the sample CSV, a Docker compose that mounts it correctly, the commercial-use license &mdash; and these documents. <a href="./">See what is in the pack &rarr;</a><br>
+<b>Honest limits, repeated here:</b> email patterns are candidates, not verified addresses, and you confirm each one before sending. Workflow 03 writes drafts to a sheet; it never sends email. n8n must be installed, and Google Sheets needs your own Google account.</p>
+</div></body></html>
