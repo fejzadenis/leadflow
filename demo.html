@@ -289,6 +289,59 @@ function lfFoldEmail(s) {
     .replace(/[^a-z0-9@._%+\-]/g, '');
 }
 
+// 2026-11-13 - the tool could only be right about a file whose bytes were still intact. A second,
+// very common failure is one layer up: a UTF-8 export read as Windows-1252 by some other program and
+// saved again, so "Pe\u00f1a" is stored as "Pe\u00c3\u00b1a" and "Milo\u0161evi\u0107" as
+// "Milo\u00c5\u00a1evi\u00c4\u2021". The original bytes are still in there, one layer down, so the
+// repair is exact rather than a guess: map the 8-bit characters back to the bytes they came from and
+// decode those bytes as strict UTF-8. Anything else (a real character above U+00FF, or a decode that
+// still is not valid UTF-8) is left untouched - a wrong repair is worse than the original damage.
+var LF_CP1252 = { '\u20AC': 0x80, '\u201A': 0x82, '\u0192': 0x83, '\u201E': 0x84, '\u2026': 0x85, '\u2020': 0x86, '\u2021': 0x87, '\u02C6': 0x88, '\u2030': 0x89, '\u0160': 0x8A, '\u2039': 0x8B, '\u0152': 0x8C, '\u017D': 0x8E, '\u2018': 0x91, '\u2019': 0x92, '\u201C': 0x93, '\u201D': 0x94, '\u2022': 0x95, '\u2013': 0x96, '\u2014': 0x97, '\u02DC': 0x98, '\u2122': 0x99, '\u0161': 0x9A, '\u203A': 0x9B, '\u0153': 0x9C, '\u017E': 0x9E, '\u0178': 0x9F };
+// Signature of the damage: a UTF-8 lead byte (U+00C2-U+00F4 as an 8-bit char) followed by a
+// continuation byte. Ordinary accented text ("\u00c5ngstr\u00f6m", "S\u00e3o", "na\u00efve") has no such pair.
+var LF_MOJI_RX = /[\u00C2-\u00F4][\u0080-\u00BF\u20AC\u201A\u0192\u201E\u2026\u2020\u2021\u02C6\u2030\u0160\u2039\u0152\u017D\u2018\u2019\u201C\u201D\u2022\u2013\u2014\u02DC\u2122\u0161\u203A\u0153\u017E\u0178]/;
+
+function lfMojibake(s) {
+  var t = String(s == null ? '' : s);
+  if (!LF_MOJI_RX.test(t)) return null;
+  var bytes = [];
+  for (var i = 0; i < t.length; i++) {
+    var c = t.charCodeAt(i);
+    if (c < 0x100) bytes.push(c);                       // ASCII, and the 8-bit chars both decoders produce
+    else if (LF_CP1252[t.charAt(i)] != null) bytes.push(LF_CP1252[t.charAt(i)]);
+    else return null;                                   // a real character lives here - not a pure double-encode
+  }
+  var out;
+  try { out = new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes)); }
+  catch (e) { return null; }
+  if (!out || out === t || out.indexOf('\uFFFD') >= 0) return null;
+  return out;
+}
+
+// Repairs every cell of every row and keeps a count plus a few before/after samples, so the report
+// can show the visitor what was changed instead of asserting that something was.
+function lfRepairRows(rows) {
+  var fixed = 0, samples = [];
+  var out = [];
+  for (var i = 0; i < rows.length; i++) {
+    var src = rows[i] || {}, row = {}, keys = Object.keys(src);
+    for (var k = 0; k < keys.length; k++) {
+      var key = keys[k], val = src[key];
+      if (typeof val === 'string') {
+        var rep = lfMojibake(val);
+        if (rep != null) {
+          if (samples.length < 3) samples.push({ field: key, before: val, after: rep });
+          fixed++;
+          val = rep;
+        }
+      }
+      row[key] = val;
+    }
+    out.push(row);
+  }
+  return { rows: out, repaired: fixed, samples: samples };
+}
+
 function lfClean(rows) {
   var seen = {}, leads = [], rejected = [], folded = [];
   for (var i = 0; i < rows.length; i++) {
@@ -372,7 +425,8 @@ function lfDraft(leads) {
 }
 
 function lfRun(rows) {
-  var cleaned = lfClean(rows);
+  var repaired = lfRepairRows(rows);
+  var cleaned = lfClean(repaired.rows);
   var patterned = lfPatterns(cleaned.leads);
   var drafted = lfDraft(patterned);
   var patterns = 0;
@@ -381,9 +435,11 @@ function lfRun(rows) {
     leads: drafted,
     rejected: cleaned.rejected,
     folded: cleaned.folded || [],
+    repaired: repaired.samples,
     summary: {
       credentials_used: 'none',
       network_calls_made: 0,
+      mojibake_repaired: repaired.repaired,
       leads_clean: drafted.length,
       patterns_generated: patterns,
       drafts_written: drafted.length,
@@ -423,6 +479,7 @@ function render() {
   document.getElementById('summary').innerHTML =
     '<span class="badge">ran locally</span>' +
     '<div class="stat"><b>' + s.leads_clean + '</b>clean leads</div>' +
+    (s.mojibake_repaired ? '<div class="stat"><b>' + s.mojibake_repaired + '</b>cells repaired from double-encoding</div>' : '') +
     '<div class="stat"><b>' + result.rejected.length + '</b>rejected (with reasons)</div>' +
     '<div class="stat"><b>' + s.patterns_generated + '</b>patterns</div>' +
     '<div class="stat"><b>' + s.drafts_written + '</b>drafts</div>' +
