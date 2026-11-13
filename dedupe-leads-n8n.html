@@ -124,6 +124,7 @@ for (const w of wrappers) {
 }
 
 return wrappers;   // every input row comes back, annotated - nothing is dropped</code></pre>
+<p class="muted" style="margin-top:12px"><b>Copy it from the gist if the page is easier to send than a link:</b> <a href="https://gist.github.com/fejzadenis/75d3942d7b5d55703fbd94adea7b5799">n8n dedupe leads gist &mdash; the same node, plus what it printed on the 12-row sample</a>. Same code, no ads, nothing to install.</p>
 <p class="muted" style="margin-top:12px">Why keep the rejects at all: a row with <code>stefan(at)dokic.rs</code> is a real lead with a mangled address. Dropping it quietly is how a pipeline loses 10% of a list and nobody notices for a quarter. Marking it <code>rejected</code> with the original value quoted lets you fix the source and re-run.</p>
 </div>
 
