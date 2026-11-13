@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>n8n puts the whole CSV in one column: semicolon fix</title>
+<meta name="description" content="One column named name;email;company;topic is a semicolon or tab export, not a broken file. The delimiter sniffer, the measured run and the fix.">
+<link rel="canonical" href="https://fejzadenis.github.io/leadflow/csv-one-column-n8n.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="LeadFlow">
+<meta property="og:url" content="https://fejzadenis.github.io/leadflow/csv-one-column-n8n.html">
+<meta property="og:title" content="n8n read the whole CSV as one column named name;email;company;topic">
+<meta property="og:description" content="It is the delimiter, not the data: a semicolon or tab export. The sniffer, the measured run on three copies of the same 12 leads, and the free fix.">
+<meta property="og:image" content="https://fejzadenis.github.io/leadflow/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://fejzadenis.github.io/leadflow/og.png">
+<meta name="robots" content="index,follow">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Why does n8n put my whole CSV into one column?","acceptedAnswer":{"@type":"Answer","text":"The file is not comma separated. A European Excel export writes the list separator from the machine regional settings, which is a semicolon where the decimal separator is a comma; a range copied out of Excel or Google Sheets is tab separated. A parser that only counts commas finds none in the header line, so the line becomes one field and its name is the entire header."}},{"@type":"Question","name":"How do I know my file is semicolon separated?","acceptedAnswer":{"@type":"Answer","text":"Open it in a plain text editor, not a spreadsheet. The first line reads name;email;company;topic. The browser repair page shows the same thing before it converts anything, and the code on this page prints the delimiter it chose."}},{"@type":"Question","name":"Is one column named name;email;company;topic the same as an encoding problem?","acceptedAnswer":{"@type":"Answer","text":"No. Encoding damage shows up inside the values: question marks, or letters like Ã© instead of e-accent. Here the values are intact and only the split is wrong, so nothing is lost and re-exporting or re-splitting it gives the whole table back."}},{"@type":"Question","name":"Can I just save the file as CSV again?","acceptedAnswer":{"@type":"Answer","text":"Yes, if you still have the spreadsheet: use Save As and pick the comma variant explicitly, then reopen it. If the file came from a client or a system you do not control, split it yourself with the node below, or convert it in the browser without uploading it anywhere."}},{"@type":"Question","name":"Does the sniffer break a file that really has one column?","acceptedAnswer":{"@type":"Answer","text":"No. A file where every line has one field scores nothing for any delimiter, so the node falls back to comma and returns the single column as it is. A one-column export is a genuinely different problem and this node cannot split what has no separator in it."}},{"@type":"Question","name":"What about pipe-separated or space-aligned files?","acceptedAnswer":{"@type":"Answer","text":"Not handled. The sniffer tries comma, semicolon and tab because those are what spreadsheet and CRM exports actually write. A pipe-separated file needs the delimiter added to the list, one string, or a conversion first."}}]}
+</script>
+<style>
+:root{--bg:#0b0f14;--card:#131a22;--text:#e6edf3;--muted:#8b98a9;--accent:#4f8cff;--green:#2ea043;--border:#22303c}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.55;padding:34px 18px 64px}
+.wrap{max-width:900px;margin:0 auto}
+.badge{display:inline-block;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;color:#b9d0ff;border:1px solid rgba(79,140,255,.45);background:rgba(79,140,255,.12);border-radius:999px;padding:4px 11px}
+h1{font-size:29px;line-height:1.2;letter-spacing:-.4px;margin-top:14px}
+h1 span{color:var(--accent)}
+.sub{color:var(--muted);font-size:15px;margin-top:10px;max-width:750px}
+.btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}
+a.btn{display:inline-block;text-decoration:none;border-radius:9px;padding:11px 18px;font-size:14px;font-weight:600;background:var(--accent);color:#fff}
+a.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text);font-weight:500}
+a.btn:hover{filter:brightness(1.09)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-top:20px}
+h2{font-size:17px;margin-bottom:12px;letter-spacing:-.2px}
+h3{font-size:14.5px;margin:14px 0 6px}
+ul{list-style:none}
+li{padding:9px 0;border-bottom:1px solid rgba(34,48,60,.6);font-size:14px}
+li:last-child{border-bottom:0}
+li b{color:var(--text);font-weight:600}
+li i{color:var(--muted);font-style:normal;display:block;font-size:12.8px;margin-top:2px}
+p{font-size:14px}
+p+p{margin-top:10px}
+.price{font-size:25px;font-weight:700;letter-spacing:-.5px}
+.muted{color:var(--muted);font-size:13.5px}
+.foot{color:var(--muted);font-size:12.5px;margin-top:26px;line-height:1.7}
+a{color:#8fb7ff}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid rgba(34,48,60,.7);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.6px}
+td code,p code,li code{background:#0d141b;border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-size:12.5px}
+pre{background:#0d141b;border:1px solid var(--border);border-radius:10px;padding:14px 16px;overflow:auto;margin-top:10px}
+pre code{font-family:Consolas,'Cascadia Mono',monospace;font-size:12.4px;line-height:1.6;color:#cfe3ff;background:none;border:0;padding:0}
+.tag{display:inline-block;font-size:11px;letter-spacing:.5px;text-transform:uppercase;border-radius:5px;padding:1px 7px;margin-right:6px}
+.k{background:rgba(46,160,67,.16);color:#7ee2a2;border:1px solid rgba(46,160,67,.4)}
+</style></head><body><div class="wrap">
+<span class="badge">the delimiter, not the data &middot; free code &middot; no upload</span>
+<h1>n8n read your whole CSV as <span>one column named name;email;company;topic</span></h1>
+<p class="sub">Nothing is corrupted. Your file is semicolon or tab separated and the parser was told comma, so it found no commas and every line became one field. Here is how to tell which separator you have, the node that sniffs it, and what it actually did to one 12-lead list saved three ways.</p>
+<div class="card">
+<h2>Why the header becomes a column name</h2>
+<p>A CSV parser reads the first line, counts the separator in it, and names the columns after the pieces. Feed it a header that contains no commas and the line is one piece &mdash; so the column is called <code>name;email;company;topic</code> and every row under it holds an entire record as text. Nothing in the values is damaged; the split simply never happened.</p>
+<p>Two files cause almost all of it, and neither is exotic:</p>
+<ul>
+<li><b>A European Excel export</b><i>Excel writes the list separator from the machine regional settings. Where the decimal separator is a comma, the list separator is a semicolon &mdash; so the file is a perfectly valid CSV with <code>;</code> between fields and commas inside them.</i></li>
+<li><b>A range copied out of Excel or Google Sheets</b><i>The clipboard format between spreadsheet cells is tab separated. Pasted into a file and saved, it is a TSV wearing a .csv extension.</i></li>
+</ul>
+<p class="muted" style="margin-top:12px">The cheap test takes ten seconds and no tool: open the file in a text editor. <code>name;email;company;topic</code> is semicolon separated, the same words with wide gaps are tab separated.</p>
+</div>
+<div class="card">
+<h2>What the sniffer did to the same 12 leads, saved three ways</h2>
+<p>The sample is the 12-row lead export used elsewhere on this site. It was written out three times: as it ships (comma), as a European Excel export (semicolon, quoted fields), and as a clipboard paste (tab). Each copy was fed to the node below with a comma-only split as the control.</p>
+<table>
+<tr><th>Copy of the file</th><th>Split on comma only</th><th>With the sniffer</th></tr>
+<tr><td>Comma (as shipped, 13 lines)</td><td>12 rows &times; 4 cols</td><td>12 rows &times; 4 cols</td></tr>
+<tr><td>Semicolon export (14 lines)</td><td><b>14 rows &times; 1 col</b>, named <code>name;email;company;topic</code></td><td>12 rows &times; 4 cols</td></tr>
+<tr><td>Tab paste (13 lines)</td><td><b>13 rows &times; 1 col</b>, named <code>name&nbsp;&nbsp;&nbsp;email</code> with tabs</td><td>12 rows &times; 4 cols</td></tr>
+</table>
+<p class="muted" style="margin-top:12px">This is the failure exactly as it arrives: the header line alone as a column name, and the row count one or two higher than the real one because a line of bare separators is still a line. All three copies come back as 12 rows and 4 columns named <code>name</code>, <code>email</code>, <code>company</code>, <code>topic</code> once the delimiter is detected &mdash; including the accent-bearing values, which were never the problem. <a href="sample/before-semicolon.csv">The semicolon copy is here</a> if you want to reproduce it on your own instance; the comma original is <a href="sample/before.csv">here</a>.</p>
+</div>
+<div class="card">
+<h2>The node, in full</h2>
+<p class="muted">Code node, <b>Run Once for All Items</b>, mode JavaScript. Input: one item whose <code>json.data</code> is the raw file text, which is what <b>Read/Download a file</b> hands you. It prints the separator it chose and the shape it produced, so a wrong guess is visible in the node output instead of silently producing a single column. No credential, no network call, nothing written.</p>
+<pre class="n8n-code"><code>// Detect the delimiter, then parse as a table. Run Once for All Items.
+// Input: one item whose json.data is the raw file text (from Read/Download a file).
+function csvRecords(text, delim) {
+  var s = String(text || '').replace(/\r\n?/g, '\n');
+  var out = [], cells = [], cur = '', q = false;
+  for (var i = 0; i &lt; s.length; i++) {
+    var c = s.charAt(i);
+    if (q) {
+      if (c === '"') { if (s.charAt(i + 1) === '"') { cur += '"'; i++; } else { q = false; } }
+      else { cur += c; }
+    } else if (c === '"') { q = true; }
+    else if (c === delim) { cells.push(cur); cur = ''; }
+    else if (c === '\n') { cells.push(cur); out.push(cells); cells = []; cur = ''; }
+    else { cur += c; }
+  }
+  cells.push(cur);
+  out.push(cells);
+  return out.filter(function (r) { return r.some(function (v) { return String(v).trim() !== ''; }); });
+}
+
+function pickDelimiter(text) {
+  var best = ',', bestScore = -1;
+  [',', ';', '\t'].forEach(function (d) {
+    var recs = csvRecords(text, d);
+    if (!recs.length) return;
+    var counts = {}, modal = 0, modalCount = 0;
+    recs.forEach(function (r) {
+      var n = r.length;
+      counts[n] = (counts[n] || 0) + 1;
+      if (counts[n] &gt; modalCount) { modalCount = counts[n]; modal = n; }
+    });
+    if (modal &lt; 2) return;
+    var score = (modal - 1) * (modalCount / recs.length);
+    if (score &gt; bestScore) { bestScore = score; best = d; }
+  });
+  return best;
+}
+
+const raw = items[0].json.data;
+const delim = pickDelimiter(raw);
+const recs = csvRecords(raw, delim);
+const head = recs.shift().map(h =&gt; String(h).trim());
+const rows = recs.map(r =&gt; {
+  const o = {};
+  head.forEach((h, i) =&gt; { o[h || 'column_' + (i + 1)] = String(r[i] == null ? '' : r[i]).trim(); });
+  return { json: o };
+});
+console.log('delimiter', JSON.stringify(delim), 'columns', head.length, 'rows', rows.length);
+return rows;</code></pre>
+<p class="muted" style="margin-top:12px"><b>The same code as a gist, if a link is easier to send than this page:</b> <a href="https://gist.github.com/fejzadenis/8c0fde18836224e5d62531d481d1c6e3">n8n reads my whole CSV as one column &mdash; the delimiter sniffer, plus what it printed on all three copies</a>.</p>
+<p class="muted" style="margin-top:12px">How it decides: for each candidate separator it counts how many fields each line splits into, takes the most common count, and scores it by that count weighted by how many lines agree. A single column scores nothing, so the default stays comma and a genuinely one-column file comes back unchanged rather than mangled. Quotes are handled &mdash; a separator inside a quoted field is text, and <code>&quot;&quot;</code> inside a quoted field is one quote character.</p>
+</div>
+<div class="card">
+<h2>Why 12 rows and not 13</h2>
+<p>One row of the export is <code>;;;</code> &mdash; separators and nothing else, a blank line the source system kept. The node drops a row only when every cell in it is empty, so that line never becomes a lead with an empty address. The semicolon copy has 14 lines because the blank row survives as punctuation; the tab copy has 13 because a row of tab characters is whitespace and the file writer dropped it. Both end at 12 records, which is the honest number.</p>
+<p class="muted" style="margin-top:12px">The same rule means a footer, a total line or a stray blank at the end never lands in your CRM as a record &mdash; and it also means a real lead whose every field is blank is indistinguishable from noise, because it is.</p>
+</div>
+<div class="card">
+<h2>What this does not fix</h2>
+<ul>
+<li><b>A file with no separator at all</b><i>A true one-column export, or a fixed-width report. Nothing to detect, nothing to split; the node returns it as-is and that is the correct answer.</i></li>
+<li><b>Pipe or other exotic separators</b><i>Only comma, semicolon and tab are tried, because those are what spreadsheet, CRM and form-tool exports write. A pipe-separated file is one string added to the candidate list, or convert it first.</i></li>
+<li><b>Damaged quoting</b><i>A file where a quote is never closed will swallow the rest of the file into one field. The sniffer cannot see that the quoting is wrong, only which separator fits best.</i></li>
+<li><b>Two header rows, or a title row above the header</b><i>The node trusts line one. If line one is a report title, you get a table whose columns are named after the title, and the real header becomes a data row. Remove it, or skip the first N lines before the node.</i></li>
+<li><b>Encoding</b><i>Separate problem, separate fix: if the values contain question marks or <code>&Atilde;&copy;</code>-style pairs, no delimiter change helps. See <a href="n8n-csv-encoding.html">the encoding page</a>.</i></li>
+</ul>
+</div>
+<div class="card">
+<h2>Fix it without writing the node</h2>
+<p class="muted">The browser repair page does the same detection and re-downloads the file as a real comma CSV, so the next tool that reads it needs no cleverness at all. Nothing is uploaded &mdash; the file stays in the tab.</p>
+<div class="btns">
+<a class="btn ghost" href="studio.html">Convert or repair a CSV in the browser, free</a>
+<a class="btn ghost" href="free/leadflow-free-clean-csv.json">Download the free clean-CSV workflow</a>
+</div>
+</div>
+<div class="card">
+<h2>If the file has to become a working pipeline</h2>
+<p class="muted">Splitting is one line of the job. The pack ($49 launch, 14-day refund on request) is the rest of it: intake that lands the rows in the right sheet, the dedupe pass on top of the split, an outreach draft per surviving lead with a review queue instead of a send button, and a report naming every dropped row and every rejected address. Four workflows, importable JSON, a first-run guide and a troubleshooting page written from runs that failed rather than from theory.</p>
+<div class="btns">
+<a class="btn" href="https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&amp;business=dragana.karans%40gmail.com&amp;item_name=LeadFlow%20Automation%20Pack&amp;amount=49.00&amp;currency_code=USD&amp;return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fthanks.html&amp;cancel_return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fcsv-one-column-n8n.html">Pay $49 via PayPal</a>
+<a class="btn ghost" href="./">What is in the pack</a>
+<a class="btn ghost" href="docs.html">Read the documentation free first</a>
+</div>
+<p class="muted" style="margin-top:12px">The receipt page hands you the ZIP immediately &mdash; no email round-trip and no account to create. The charge comes from <code>dragana.karans@gmail.com</code>; questions, files and refunds go to <code>perun.intelligence@gmail.com</code>.</p>
+</div>
+<div class="card">
+<h2>Questions this page gets</h2>
+<h3>Why does n8n put my whole CSV into one column?</h3>
+<p class="muted">The file is not comma separated. A European Excel export writes the list separator from the machine regional settings, which is a semicolon where the decimal separator is a comma; a range copied out of Excel or Google Sheets is tab separated. A parser that only counts commas finds none in the header line, so the line becomes one field and its name is the entire header.</p>
+<h3>How do I know my file is semicolon separated?</h3>
+<p class="muted">Open it in a plain text editor, not a spreadsheet. The first line reads name;email;company;topic. The browser repair page shows the same thing before it converts anything, and the code on this page prints the delimiter it chose.</p>
+<h3>Is one column named name;email;company;topic the same as an encoding problem?</h3>
+<p class="muted">No. Encoding damage shows up inside the values: question marks, or letters like Ã© instead of e-accent. Here the values are intact and only the split is wrong, so nothing is lost and re-exporting or re-splitting it gives the whole table back.</p>
+<h3>Can I just save the file as CSV again?</h3>
+<p class="muted">Yes, if you still have the spreadsheet: use Save As and pick the comma variant explicitly, then reopen it. If the file came from a client or a system you do not control, split it yourself with the node below, or convert it in the browser without uploading it anywhere.</p>
+<h3>Does the sniffer break a file that really has one column?</h3>
+<p class="muted">No. A file where every line has one field scores nothing for any delimiter, so the node falls back to comma and returns the single column as it is. A one-column export is a genuinely different problem and this node cannot split what has no separator in it.</p>
+<h3>What about pipe-separated or space-aligned files?</h3>
+<p class="muted">Not handled. The sniffer tries comma, semicolon and tab because those are what spreadsheet and CRM exports actually write. A pipe-separated file needs the delimiter added to the list, one string, or a conversion first.</p>
+</div>
+<p class="foot"><b>Honest limits:</b> this detects comma, semicolon and tab only, on a file you already have as text; it does not fetch anything, verify addresses, dedupe or send. The row and column counts above come from the shipped sample copies and reproduce with the node exactly as printed on this page.<br>
+Free workflows live at <a href="https://github.com/fejzadenis/n8n-lead-toolkit">github.com/fejzadenis/n8n-lead-toolkit</a> &middot; more free fixes: <a href="dedupe-leads-n8n.html">removing duplicate leads in n8n</a> &middot; <a href="n8n-csv-encoding.html">names arriving as ???? in Google Sheets</a> &middot; <a href="free/">all three free workflows</a> &middot; <a href="./">LeadFlow home</a></p>
+</div></body></html>
