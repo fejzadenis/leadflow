@@ -363,13 +363,26 @@ function lfGbkTable() {
   return map;
 }
 
-function lfGbkMojibake(s) {
+// 2026-11-13 (regression, reported on leadflow issue #1): the inverse table is NOT a signature of
+// damage. Every 2-byte UTF-8 sequence has exactly one GBK reading, so the table holds ~1920 real
+// Chinese characters, and any cell made only of them reverses "successfully" into Latin text: the
+// surname U+8305 (Mao) becomes "e with acute", U+8305 U+53F0 (Moutai) becomes a two-letter blob.
+// A name column full of Chinese distributors would have been silently rewritten while the report
+// claimed an exact repair. So the reversal now needs a Latin anchor: at least one ASCII letter in
+// the same cell. Real damage of Latin text always keeps its ASCII letters next to the mangled
+// character ("D" + U+8305 + "cision"); a cell that is pure CJK is left exactly as it arrived, and
+// lfRepairRows counts it, so the report can say a person should look at it instead of guessing.
+function lfGbkProbe(s) {
   var t = String(s == null ? '' : s);
   if (!t) return null;
-  var map = lfGbkTable(), bytes = [], hit = 0;
+  var map = lfGbkTable(), bytes = [], hit = 0, anchor = false;
   for (var i = 0; i < t.length; i++) {
     var c = t.charCodeAt(i);
-    if (c < 0x80) { bytes.push(c); continue; }
+    if (c < 0x80) {
+      if ((c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a)) anchor = true;
+      bytes.push(c);
+      continue;
+    }
     var pair = map[t.charAt(i)];
     if (pair == null) return null;                     // not a pure GBK double-decode
     bytes.push(pair >> 8, pair & 0xFF);
@@ -386,7 +399,12 @@ function lfGbkMojibake(s) {
     if ((oc >= 0x00C0 && oc <= 0x024F) || (oc >= 0x0370 && oc <= 0x04FF)) { accented = true; break; }
   }
   if (!accented) return null;
-  return out;
+  return { text: out, anchor: anchor };
+}
+
+function lfGbkMojibake(s) {
+  var p = lfGbkProbe(s);
+  return p != null && p.anchor ? p.text : null;
 }
 
 // One call site for both decode families. Windows-1252 goes first: it is the more common damage and
@@ -402,7 +420,7 @@ function lfRepairCell(v) {
 // Repairs every cell of every row and keeps a count plus a few before/after samples, so the report
 // can show the visitor what was changed instead of asserting that something was.
 function lfRepairRows(rows) {
-  var fixed = 0, gbk = 0, samples = [];
+  var fixed = 0, gbk = 0, ambiguous = 0, samples = [];
   var out = [];
   for (var i = 0; i < rows.length; i++) {
     var src = rows[i] || {}, row = {}, keys = Object.keys(src);
@@ -415,13 +433,15 @@ function lfRepairRows(rows) {
           fixed++;
           if (rep.kind === 'gb18030') gbk++;
           val = rep.text;
+        } else if (lfGbkProbe(val) != null) {
+          ambiguous++;                                   // pure-CJK cell that would also reverse: never guess
         }
       }
       row[key] = val;
     }
     out.push(row);
   }
-  return { rows: out, repaired: fixed, gbk: gbk, samples: samples };
+  return { rows: out, repaired: fixed, gbk: gbk, ambiguous: ambiguous, samples: samples };
 }
 
 function lfClean(rows) {
@@ -523,6 +543,7 @@ function lfRun(rows) {
       network_calls_made: 0,
       mojibake_repaired: repaired.repaired,
       mojibake_gbk: repaired.gbk || 0,
+      mojibake_gbk_ambiguous: repaired.ambiguous || 0,
       leads_clean: drafted.length,
       patterns_generated: patterns,
       drafts_written: drafted.length,
@@ -588,11 +609,12 @@ function lfReport(result) {
     'Candidate patterns: ' + s.patterns_generated,
     'Drafts written: ' + s.drafts_written,
     'Emails sent: 0',
-    'Network calls: 0',
-    '',
-    '## Rejected rows',
-    ''
+    'Network calls: 0'
   ];
+  if (s.mojibake_gbk_ambiguous) {
+    lines.push('Left unchanged (CJK text that is either a real name or damage - a person should check, it is not guessed): ' + s.mojibake_gbk_ambiguous);
+  }
+  lines.push('', '## Rejected rows', '');
   if (result.repaired && result.repaired.length) {
     lines.push('', '## Repaired double-encoded text', '',
       'These cells arrived as UTF-8 that another program decoded as Windows-1252 ("Pe\u00c3\u00b1a") or as GB18030 ("D\u8305cision"); the original bytes were still in the cell, so the repair is exact, not a transliteration.');
