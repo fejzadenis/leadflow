@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSV shows Ã© instead of é - double-encoded, and fixable</title>
+<meta name="description" content="Names arrive as Ã©, Ã± or Ã¼ after an export. The file was read in the wrong character set, not corrupted - fix it free in the browser, nothing uploaded.">
+<link rel="canonical" href="https://fejzadenis.github.io/leadflow/fix-mojibake-csv.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="LeadFlow">
+<meta property="og:url" content="https://fejzadenis.github.io/leadflow/fix-mojibake-csv.html">
+<meta property="og:title" content="CSV shows Ã© instead of é - double-encoded, and fixable">
+<meta property="og:description" content="Ã©, Ã±, Ã¼ and â€œ are UTF-8 bytes that were read as Windows-1252. Every byte is still there, so the repair is exact - or a person does it.">
+<meta property="og:image" content="https://fejzadenis.github.io/leadflow/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is my file corrupted?","acceptedAnswer":{"@type":"Answer","text":"No. Double encoding keeps every byte: in UTF-8 the letter é is the two bytes 0xC3 0xA9, and a tool that read those bytes as Windows-1252 simply drew two characters for them. Nothing was replaced or thrown away, so the original bytes can be read again. A corrupted file is one where the bytes were overwritten - that is the question-mark case, and it is different."}},{"@type":"Question","name":"Why does the damage always start with Ã or Â?","acceptedAnswer":{"@type":"Answer","text":"Because those are the byte values 0xC3 and 0xC2, which is what UTF-8 uses in front of most accented Latin letters. Every é, ñ, ü, è and ö in a UTF-8 file is written as one of those two bytes plus a second byte, so a reader that assumes Windows-1252 shows a pair of characters instead of one letter."}},{"@type":"Question","name":"Does the free tool send my file anywhere?","acceptedAnswer":{"@type":"Answer","text":"No. It is one HTML file running in the tab: the file is read with the browser's own file API, repaired in memory and written back as a download. There is no network call, no analytics and no storage - you can open the page source and look for one."}},{"@type":"Question","name":"Will it wreck names that are genuinely accented?","acceptedAnswer":{"@type":"Answer","text":"It only reverses text whose damage is unambiguous - the pattern of a Windows-1252 stand-in byte followed by a UTF-8 continuation byte - and it leaves anything else byte for byte alone. A file that already holds real characters like Ångström or São, or that was damaged twice, is either left untouched or handed to a person rather than guessed at: a wrong repair is worse than the original damage."}},{"@type":"Question","name":"Excel already showed the damaged text and I saved it. Is it too late?","acceptedAnswer":{"@type":"Answer","text":"If the characters you see are Ã, Â, © and similar, no - each of them still stands for one byte, so the text can be walked back. If they are literal question marks, the bytes were replaced at save time and that information is gone. That is why the tool's report says which cells it repaired and which it had to drop."}},{"@type":"Question","name":"What do I get for $49, and how fast?","acceptedAnswer":{"@type":"Answer","text":"One export, up to 5,000 rows, opened by a person rather than a rule set: the cleaned file plus a report naming every row dropped and every address rewritten, back within 24 hours. $79 covers 25,000 rows and $99 covers 100,000. It is refundable for 14 days if the result does not match that description, and if the file cannot be fixed the answer is no instead of a charge."}}]}</script>
+<style>
+:root{--bg:#0b0f14;--card:#131a22;--text:#e6edf3;--muted:#8b98a9;--accent:#4f8cff;--green:#2ea043;--border:#22303c}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+.wrap{max-width:840px;margin:0 auto;padding:48px 24px}
+h1{font-size:2.15rem;line-height:1.22;margin-bottom:14px}h1 span{color:var(--accent)}
+h2{font-size:1.3rem;margin:36px 0 10px}
+.lead{font-size:1.1rem;color:var(--muted);margin-bottom:8px}
+.box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin:18px 0}
+.box p,.box li{color:var(--muted);font-size:.95rem}
+ul,ol{margin:10px 0 0 22px}li{margin:7px 0;color:var(--muted)}
+code{background:#0e151d;border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:.9em;color:#c8d6e5}
+.btn{display:inline-block;background:var(--accent);color:#fff;padding:13px 22px;border-radius:10px;font-weight:700;text-decoration:none}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.muted{color:var(--muted);font-size:.9rem}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.9rem}
+td,th{border:1px solid var(--border);padding:8px 10px;text-align:left;color:var(--muted)}
+th{color:var(--text);font-weight:600}
+.honest{border-left:3px solid var(--green);padding-left:14px}
+.footer{color:var(--muted);font-size:.85rem;border-top:1px solid var(--border);margin-top:44px;padding-top:18px}
+a{color:var(--accent)}
+</style></head><body><div class="wrap">
+
+<h1>Letters arrive as <span>Ã© instead of é</span></h1>
+<p class="lead">A name that should read <code>François Müller</code> lands in the sheet as <code>FranÃ§ois MÃ¼ller</code>, <code>Peña</code> becomes <code>PeÃ±a</code>, and quotes look like <code>â€œlike thisâ€</code>. Nothing was lost. The file was read as Windows-1252 when it was written as UTF-8.</p>
+
+<h2>What actually happened</h2>
+<p>In UTF-8, <code>é</code> is two bytes: <code>0xC3 0xA9</code>. A program that reads those bytes as <b>Windows-1252</b> (or Latin-1) does not see one letter - it sees two characters, <code>Ã</code> and <code>©</code>, and writes both. That is why the damage always starts with <code>Ã</code> or <code>Â</code>: those are the byte values <code>0xC3</code> and <code>0xC2</code>, the two bytes UTF-8 uses most for accented Latin letters.</p>
+<p>The important part: <b>each of those characters still stands for exactly one original byte</b>. Nothing was replaced or dropped, so the text can be walked back byte by byte and decoded again as UTF-8. This is not a guess at what the name probably was - the original bytes are still in the string.</p>
+
+<table>
+<tr><th>What you see</th><th>What it was</th><th>Recoverable?</th></tr>
+<tr><td><code>FranÃ§ois</code>, <code>MÃ¼ller</code>, <code>PeÃ±a</code></td><td>UTF-8 read as Windows-1252 once</td><td>Yes - exactly</td></tr>
+<tr><td><code>ÄŒ</code>, <code>Å¡</code>, <code>Å¾</code></td><td><code>č</code>, <code>š</code>, <code>ž</code> through the same round trip</td><td>Yes - exactly</td></tr>
+<tr><td><code>â€œquoteâ€</code>, <code>â€“</code>, <code>â‚¬</code></td><td>Curly quotes, en dashes, the euro sign</td><td>Yes - exactly</td></tr>
+<tr><td><code>PeÃƒÂ±a</code></td><td>Damaged twice over</td><td>Usually yes; the tool stops rather than guess</td></tr>
+<tr><td><code>Pe?a</code>, <code>Pe??a</code></td><td>A <code>?</code> was substituted for each byte and the file saved</td><td>No - and no tool can honestly say otherwise</td></tr>
+</table>
+
+<h2>Fix 1 - free, in your browser, nothing installed</h2>
+<div class="box">
+<p>Open the <a href="studio.html">browser CSV studio</a> and drop the file in. It walks the damaged text back to the original bytes, decodes them as UTF-8 again, then cleans the rest of the export - broken quotes, ragged rows, duplicates, invalid addresses - and hands you a clean CSV plus a written reason for every row it dropped or rewrote. The file is read in the tab: no upload, no account, no network request at all. It reads <code>.csv</code> and <code>.xlsx</code>.</p>
+<p style="margin-top:10px" class="honest">It only reverses text whose damage is unambiguous. If a file mixes real accented letters with damaged ones, or needs more than one pass, the page leaves those cells untouched on purpose: a wrong repair is worse than the original damage. That is the case the paid repair exists for.</p>
+<p style="margin-top:14px"><a class="btn" href="studio.html">Fix my CSV free - no upload</a></p>
+</div>
+
+<h2>Fix 2 - stop it happening again at the source</h2>
+<div class="box">
+<p>The damage is created by one step: a UTF-8 export opened by a tool that assumes Windows-1252 and then saved again. So:</p>
+<ul>
+<li>In Excel, import with <b>Data &rarr; From Text/CSV</b> and set <b>File Origin</b> to <b>65001: Unicode (UTF-8)</b> instead of double-clicking the file.</li>
+<li>When you ask a supplier for a list, ask for <b>UTF-8 CSV</b> and say why - it saves this round trip entirely.</li>
+<li>In <code>n8n</code>, Python or any script, decode with an explicit charset rather than the platform default. The exact decode node is on the <a href="n8n-csv-encoding.html">n8n encoding page</a>.</li>
+</ul>
+<p style="margin-top:10px" class="honest">Re-saving an already damaged file as UTF-8 does not repair it - it stores the damage faithfully. Fix the text first, then save.</p>
+</div>
+
+<h2>Fix 3 - a person does it, one file, back within 24 hours</h2>
+<div class="box">
+<p>Some exports do not yield to rules: damage on top of real accents, two header rows, a column merged by hand, the same company under four spellings, or an import that still rejects the file after a clean. That is one export, done by a person, with the cleaned file and a report naming every row dropped and every address rewritten.</p>
+<p style="margin-top:10px"><b>$49</b> &middot; up to 5,000 rows<br><b>$79</b> &middot; up to 25,000 rows<br><b>$99</b> &middot; up to 100,000 rows</p>
+<p style="margin-top:10px" class="muted">14-day refund if the result does not match that description. If the file cannot be fixed, the answer is no rather than a charge.</p>
+<p style="margin-top:14px"><a class="btn ghost" href="https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=dragana.karans%40gmail.com&item_name=LeadFlow%20CSV%20repair%20-%20up%20to%205000%20rows&amount=49.00&currency_code=USD&return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fthanks.html&cancel_return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Ffix-mojibake-csv.html">Send one export - $49</a> &nbsp; <a href="mailto:perun.intelligence@gmail.com?subject=CSV%20repair%20-%20mojibake">or ask first, free</a></p>
+<p style="margin-top:14px" class="muted" data-receipt="payee">Paying opens PayPal, which charges <b>dragana.karans@gmail.com</b>; every question and every delivery is answered from <b>perun.intelligence@gmail.com</b>. Email the file first if you would rather have an answer before any payment - the first look is free.</p>
+</div>
+
+<h2>Questions people ask</h2>
+<div class="box"><p><b>Is my file corrupted?</b></p><p style="margin-top:6px">No. Double encoding keeps every byte: in UTF-8 the letter é is the two bytes 0xC3 0xA9, and a tool that read those bytes as Windows-1252 simply drew two characters for them. Nothing was replaced or thrown away, so the original bytes can be read again. A corrupted file is one where the bytes were overwritten - that is the question-mark case, and it is different.</p></div>
+<div class="box"><p><b>Why does the damage always start with Ã or Â?</b></p><p style="margin-top:6px">Because those are the byte values 0xC3 and 0xC2, which is what UTF-8 uses in front of most accented Latin letters. Every é, ñ, ü, è and ö in a UTF-8 file is written as one of those two bytes plus a second byte, so a reader that assumes Windows-1252 shows a pair of characters instead of one letter.</p></div>
+<div class="box"><p><b>Does the free tool send my file anywhere?</b></p><p style="margin-top:6px">No. It is one HTML file running in the tab: the file is read with the browser's own file API, repaired in memory and written back as a download. There is no network call, no analytics and no storage - you can open the page source and look for one.</p></div>
+<div class="box"><p><b>Will it wreck names that are genuinely accented?</b></p><p style="margin-top:6px">It only reverses text whose damage is unambiguous - the pattern of a Windows-1252 stand-in byte followed by a UTF-8 continuation byte - and it leaves anything else byte for byte alone. A file that already holds real characters like Ångström or São, or that was damaged twice, is either left untouched or handed to a person rather than guessed at: a wrong repair is worse than the original damage.</p></div>
+<div class="box"><p><b>Excel already showed the damaged text and I saved it. Is it too late?</b></p><p style="margin-top:6px">If the characters you see are Ã, Â, © and similar, no - each of them still stands for one byte, so the text can be walked back. If they are literal question marks, the bytes were replaced at save time and that information is gone. That is why the tool's report says which cells it repaired and which it had to drop.</p></div>
+<div class="box"><p><b>What do I get for $49, and how fast?</b></p><p style="margin-top:6px">One export, up to 5,000 rows, opened by a person rather than a rule set: the cleaned file plus a report naming every row dropped and every address rewritten, back within 24 hours. $79 covers 25,000 rows and $99 covers 100,000. It is refundable for 14 days if the result does not match that description, and if the file cannot be fixed the answer is no instead of a charge.</p></div>
+
+<h2>Not sure which case you have?</h2>
+<p>Send the first five rows to <a href="mailto:perun.intelligence@gmail.com?subject=Which%20CSV%20damage%20is%20this">perun.intelligence@gmail.com</a> and you get an answer, free, before any payment - including "this one is not recoverable". The other symptom, letters replaced by question marks, is on its own page: <a href="fix-csv-question-marks.html">CSV shows question marks instead of letters</a>.</p>
+
+<div class="footer">
+<p>LeadFlow. The free tool runs entirely in your browser and stores nothing; the paid repair is done by one person and answered from perun.intelligence@gmail.com. No tracking on this page.</p>
+<p style="margin-top:6px"><a href="./">LeadFlow</a> &middot; <a href="studio.html">CSV studio (free)</a> &middot; <a href="demo.html">demo</a> &middot; <a href="n8n-csv-encoding.html">n8n encoding node</a> &middot; <a href="fix-csv-question-marks.html">question marks instead of letters</a> &middot; <a href="docs.html">docs</a></p>
+</div>
+</div></body></html>
