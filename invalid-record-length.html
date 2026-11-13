@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invalid Record Length: columns length is 7, got 8 - n8n CSV fix</title>
+<meta name="description" content="n8n's CSV import stopped with 'Invalid Record Length: columns length is 7, got 8'. It is one malformed row, almost always a trailing delimiter. Find the line, fix it free in the browser, or hand the export over.">
+<link rel="canonical" href="https://fejzadenis.github.io/leadflow/invalid-record-length.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="LeadFlow">
+<meta property="og:url" content="https://fejzadenis.github.io/leadflow/invalid-record-length.html">
+<meta property="og:title" content="Invalid Record Length: columns length is 7, got 8 - the n8n CSV fix">
+<meta property="og:description" content="One row has more or fewer fields than the header. Here is how to find that row in seconds, the free browser repair, and the Code node that pads ragged rows instead of failing.">
+<meta property="og:image" content="https://fejzadenis.github.io/leadflow/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What does 'Invalid Record Length: columns length is 7, got 8' mean?","acceptedAnswer":{"@type":"Answer","text":"The CSV parser counted 7 columns in the header and 8 fields on that data row, so it refused the row. The usual cause is a trailing delimiter at the end of the line, which every spreadsheet export that writes a semicolon after the last cell produces. The row is not corrupt; it has one empty field too many."}},
+{"@type":"Question","name":"Which line is the error talking about?","acceptedAnswer":{"@type":"Answer","text":"The number after 'on line' is a line number in the file as the parser reads it, counting the header as line 1. Open the file in a plain text editor, turn on line numbers, and look at that line plus the one before it: an unquoted line break or a stray quote on the previous line shifts everything after it, and the parser then reports the first line that looks wrong."}},
+{"@type":"Question","name":"Does 'Skip records with errors' fix it?","acceptedAnswer":{"@type":"Answer","text":"No. It hides the problem by dropping every affected row, and it drops the data you needed. Turn it off while you diagnose, so the node fails loudly on the exact line, then repair the rows instead of discarding them."}},
+{"@type":"Question","name":"Why does my file work in Excel and fail in n8n?","acceptedAnswer":{"@type":"Answer","text":"Excel is lenient: it accepts a trailing delimiter, pads short rows and guesses the delimiter from the first line. n8n's Extract from File node is strict about the delimiter you select and refuses rows whose field count differs from the header. A file that 'looks fine' can therefore hold rows the node rejects."}},
+{"@type":"Question","name":"Is the repair done in the browser?","acceptedAnswer":{"@type":"Answer","text":"Yes. The free repair page reads the file through the browser's own file API, repairs it in the tab and writes a download. There is no upload, no fetch, no analytics and no storage, and you can confirm that by searching the page source for network calls."}},
+{"@type":"Question","name":"What if the export is too damaged for a rule to fix?","acceptedAnswer":{"@type":"Answer","text":"Then a person opens it: $49 for one export up to 5,000 rows, $79 up to 25,000, $99 up to 100,000. You get the cleaned file plus a report naming every dropped row and every value rewritten, back within 24 hours, refundable for 14 days if it does not match the description."}}]}</script>
+<style>
+:root{--bg:#0b0f14;--card:#131a22;--text:#e6edf3;--muted:#8b98a9;--accent:#4f8cff;--green:#2ea043;--border:#22303c}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+.wrap{max-width:840px;margin:0 auto;padding:48px 24px}
+h1{font-size:2.1rem;line-height:1.22;margin-bottom:14px}h1 span{color:var(--accent)}
+h2{font-size:1.3rem;margin:36px 0 10px}h3{font-size:1.05rem;margin:22px 0 6px}
+.lead{font-size:1.1rem;color:var(--muted);margin-bottom:8px}
+.box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin:18px 0}
+.box p,.box li{color:var(--muted);font-size:.95rem}
+.box.offer{border-color:var(--accent)}
+ul,ol{margin:10px 0 0 22px}li{margin:7px 0;color:var(--muted)}
+code{background:#0e151d;border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:.9em;color:#c8d6e5}
+pre{background:#0e151d;border:1px solid var(--border);border-radius:10px;padding:14px;overflow-x:auto;margin:12px 0}
+pre code{border:0;background:none;padding:0;font-size:.85rem;line-height:1.5}
+.btn{display:inline-block;background:var(--accent);color:#fff;padding:13px 22px;border-radius:10px;font-weight:700;text-decoration:none;margin:6px 8px 0 0}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.muted{color:var(--muted);font-size:.9rem}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.9rem}
+td,th{border:1px solid var(--border);padding:8px 10px;text-align:left;color:var(--muted)}
+th{color:var(--text);font-weight:600}
+.honest{border-left:3px solid var(--green);padding-left:14px}
+.footer{color:var(--muted);font-size:.85rem;border-top:1px solid var(--border);margin-top:44px;padding-top:18px}
+a{color:var(--accent)}
+</style></head><body><div class="wrap">
+<h1>Invalid Record Length: <span>columns length is 7, got 8</span></h1>
+<p class="lead">Your CSV did not fail to import. One row in it has one field more than the header promises &mdash; nearly always a trailing semicolon at the end of the line &mdash; and n8n's Extract from File node refuses that row instead of guessing.</p>
+
+<div class="box offer">
+<p style="color:var(--text);font-size:1rem"><b>If it is one broken export and you would rather not debug it:</b> a person opens the file, repairs it and sends it back with a report naming every dropped row and every value rewritten. <b>$49</b> up to 5,000 rows, back within 24 hours, 14-day refund if it does not match that sentence.</p>
+<a class="btn" href="https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=dragana.karans%40gmail.com&item_name=LeadFlow%20CSV%20repair%20-%20up%20to%205000%20rows&amount=49.00&currency_code=USD&return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fthanks.html&cancel_return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Finvalid-record-length.html">Fix up to 5,000 rows - $49</a>
+<a class="btn ghost" href="studio.html">Or repair it free in your browser</a>
+<p class="muted" style="margin-top:10px">The free browser repair fixes this exact class of damage without an upload or an account. <b>The fix below is free and complete either way</b> &mdash; read it first if you would rather do it yourself in five minutes.</p>
+</div>
+
+<h2>What the message actually says</h2>
+<p>Take the numbers literally. The parser read the first line, decided the file has <b>7 columns</b>, then reached a row that splits into <b>8 fields</b> on the delimiter you selected. A CSV row with the wrong field count cannot be mapped onto named keys, so the node stops. The row is not corrupt and the data is not lost.</p>
+<table>
+<tr><th>What you see</th><th>What it means</th></tr>
+<tr><td><code>columns length is 7, got 8</code></td><td>One field too many &mdash; a trailing delimiter, or an unquoted value containing the delimiter</td></tr>
+<tr><td><code>columns length is 8, got 7</code></td><td>One field too few &mdash; the exporter omitted the last empty cell, or a value was lost upstream</td></tr>
+<tr><td><code>got 1</code></td><td>The delimiter is wrong: the file is semicolon-separated and the node is set to comma, so every row is a single field</td></tr>
+<tr><td><code>got 13</code> when the header has 7</td><td>A field contains the delimiter and is not quoted, so one cell has been split into several</td></tr>
+</table>
+
+<h2>Which row is it? Twenty seconds</h2>
+<p>The number after <code>on line</code> is a line number in the file, counting the header as line 1. Open the CSV in a plain text editor (Notepad++, VS Code, <code>less</code>), switch line numbers on and look at that line <b>and the one before it</b>:</p>
+<ul>
+<li>If the line ends with the delimiter (<code>...;R;</code> when the header has 7 fields) you have found it. This is the most common cause by a wide margin: spreadsheet exports write an empty cell after the last column and then a separator.</li>
+<li>If the previous line contains a quote that is never closed, the parser is still inside that quoted field when it reaches the next line &mdash; everything after it shifts and the reported line is just where the damage finally shows.</li>
+<li>If the line ends mid-address, the export wrapped a value across two lines without quoting it. Often the same character: an unquoted line break inside a field.</li>
+</ul>
+
+<h2>Why the file opens fine in Excel and still fails here</h2>
+<p>Excel is lenient by design. It accepts a trailing delimiter, pads short rows, re-guesses the separator from the first line and silently merges or splits cells when a row disagrees with the header. n8n's Extract from File node is strict: it uses the delimiter you selected and refuses a row whose field count differs from the header. So "the file is fine, I opened it" and "the node fails" are both true. The file contains rows Excel quietly repaired on screen.</p>
+
+<h2>Fix 1 &mdash; the free repair, in the browser</h2>
+<div class="box">
+<p><a href="studio.html"><b>Open the free CSV repair</b></a> and drop the file on it. It removes trailing delimiters, re-pads short rows to the header, normalises quoting, dedupes by email and repairs wrongly decoded letters (question marks, <code>Ã©</code>, UTF-8 read as GB18030), then hands you a download plus a report of every row it changed.</p>
+<p>Nothing is uploaded: the file is read with the browser's own file API and repaired in the tab. No fetch, no analytics, no storage &mdash; you can confirm it by searching the page source for network calls.</p>
+</div>
+
+<h2>Fix 2 &mdash; the two n8n settings that turn a hard stop into a diagnosis</h2>
+<ol>
+<li><b>Set the delimiter explicitly.</b> A file exported on a European Windows is usually <code>;</code>, and the node defaults to <code>,</code>. If the error said <code>got 1</code>, this is the whole problem.</li>
+<li><b>Turn "Skip records with errors" off while you diagnose.</b> With it on, the node drops every affected row and reports nothing, which is how a 4,000-row import quietly becomes a 3,880-row import. Fix the rows, then leave the option off so the next bad export fails loudly instead of shrinking your list.</li>
+</ol>
+<p class="muted">This behaviour, and the fact that a trailing delimiter is rejected rather than tolerated, was reported to n8n as <a href="https://github.com/n8n-io/n8n/issues/20524">issue #20524</a>; the maintainers routed it as an enhancement rather than a bug, so do not wait for the node to become lenient.</p>
+
+<h2>Fix 3 &mdash; a Code node that pads instead of failing</h2>
+<p>When you cannot control the export (a supplier, a client, a nightly FTP drop), normalise the rows before they reach the CSV node's output. This runs once for all items and takes one item holding the file as text:</p>
+<pre><code>// Code node, mode: Run Once for All Items
+// input: one item { csv: "&lt;file contents as text&gt;" }
+const DELIM = ';';
+const text = $input.first().json.csv.replace(/^\uFEFF/, '');
+const lines = text.split(/\r?\n/).filter(l =&gt; l.trim() !== '');
+
+const header = lines.shift().split(DELIM).map(h =&gt; h.trim() || 'unnamed');
+const rows = lines.map((line, i) =&gt; {
+  const cells = line.split(DELIM);
+  // a trailing delimiter produces empty overflow cells - drop them
+  while (cells.length &gt; header.length &amp;&amp; cells[cells.length - 1].trim() === '') cells.pop();
+  // a short row gets the missing cells as empty strings
+  while (cells.length &lt; header.length) cells.push('');
+  const out = { __source_line: i + 2 };
+  header.forEach((h, j) =&gt; { out[h] = cells[j] === undefined ? '' : cells[j].trim(); });
+  return { json: out };
+});
+return rows;</code></pre>
+<p>Two honest limits, because they decide whether this is enough:</p>
+<ul>
+<li><b>It does not understand quoted delimiters.</b> If a cell contains the delimiter inside quotes (<code>"Smith, John"</code> with a comma separator), splitting on the delimiter breaks it. That needs a real parser &mdash; which is what the node already is, and why Fix 1 exists.</li>
+<li><b>It cannot invent a column.</b> If two columns were merged upstream, padding produces empty cells, not recovered data. That is a repair, not a reformat.</li>
+</ul>
+
+<h2>When a person has to do it</h2>
+<p>The rule of thumb: <b>a rule can fix formatting, only a person can fix a decision.</b> Formatting is a trailing delimiter, a wrong code page, a short row, a duplicate. A decision is which of two header rows is the real one, how to split a column that was merged on export, whether <code>ACME Ltd</code> and <code>Acme Limited</code> are one customer, and which of two conflicting phone numbers is current.</p>
+<div class="box">
+<p><b>$49</b> &middot; one export up to 5,000 rows<br><b>$79</b> &middot; up to 25,000 rows &mdash; a month of form exports or one CRM migration batch<br><b>$99</b> &middot; up to 100,000 rows &mdash; the full house list</p>
+<p>You get the cleaned CSV, the row report naming every dropped row and every value rewritten, and a 14-day refund if the result does not match the description. Back within 24 hours. Mail the file first if you would rather have an answer before any payment &mdash; the first look is free: <a href="mailto:perun.intelligence@gmail.com?subject=CSV%20repair%20-%20invalid%20record%20length">perun.intelligence@gmail.com</a>.</p>
+<a class="btn" href="https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=dragana.karans%40gmail.com&item_name=LeadFlow%20CSV%20repair%20-%20up%20to%205000%20rows&amount=49.00&currency_code=USD&return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fthanks.html&cancel_return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Finvalid-record-length.html">Fix up to 5,000 rows - $49</a>
+<a class="btn ghost" href="studio.html">Try the free repair first</a>
+<p class="muted" style="margin-top:10px">Paying opens PayPal and charges <b>dragana.karans@gmail.com</b>; every file, question and refund is handled from <b>perun.intelligence@gmail.com</b>.</p>
+</div>
+
+<div class="box honest">
+<h3 style="margin-top:0">What you can check before paying anything</h3>
+<ul>
+<li><a href="dedupe-leads-n8n.html">A real run, published unedited</a>: a 12-row export in, 3 duplicates merged, 2 addresses rejected with the reason for each, and the output file downloadable.</li>
+<li><a href="free/">Three free n8n workflows</a> that do part of this: clean a messy export, remove duplicate leads, generate candidate addresses.</li>
+<li><a href="csv-one-column-n8n.html">The semicolon export that lands in one column</a> &mdash; the sibling of this error, and the same root cause.</li>
+<li><a href="docs.html">The pack's own documentation</a>, published before the price, so you can read what you would be buying.</li>
+</ul>
+</div>
+
+<p class="footer">No tracking on this page. No upload: the repair runs in your browser. The CSV parser's message quoted above is the one n8n reports in the execution log and the worker log; line numbers are the parser's own, header included. &copy; LeadFlow &mdash; <a href="index.html">workflows and repairs</a>.</p>
+</div></body></html>
