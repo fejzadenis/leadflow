@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSV shows question marks instead of letters - 3 fixes, one free</title>
+<meta name="description" content="Question marks where accented letters should be mean the CSV was read in the wrong character set. The free in-browser fix, and when a person has to do it.">
+<link rel="canonical" href="https://fejzadenis.github.io/leadflow/fix-csv-question-marks.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="LeadFlow">
+<meta property="og:url" content="https://fejzadenis.github.io/leadflow/fix-csv-question-marks.html">
+<meta property="og:title" content="CSV shows question marks instead of letters - 3 fixes, one free">
+<meta property="og:description" content="Question marks where the letters should be are an encoding problem, not a broken file. Fix it in the browser, in Excel, or hand the export to a person.">
+<meta property="og:image" content="https://fejzadenis.github.io/leadflow/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is the file corrupted, or just decoded wrong?","acceptedAnswer":{"@type":"Answer","text":"Decoded wrong, in almost every case. Excel wrote the CSV in Windows-1250 or Windows-1252 and the next tool read it as UTF-8. The bytes for the accented letters are still in the file, they are just not valid UTF-8, so the reader replaces each one with a question mark or a black diamond. Decoding the same bytes with the right code page brings the letters back."}},{"@type":"Question","name":"Does the free tool upload my list anywhere?","acceptedAnswer":{"@type":"Answer","text":"No. It is one HTML file that runs in the tab: the file is read with the browser's own file API, decoded locally and written back to a download. There is no fetch, no XHR, no analytics and no storage. You can open the page source and search for network calls - there are none."}},{"@type":"Question","name":"Will it fix a file where the letters are already question marks?","acceptedAnswer":{"@type":"Answer","text":"Only if the original bytes are still there. If a program replaced the characters with a literal ? and then saved that file, the information is gone and no tool can restore it - the page will clean the rest of the file and say so. If the export still holds the original bytes (the usual case), the letters come back."}},{"@type":"Question","name":"Which languages does it handle?","acceptedAnswer":{"@type":"Answer","text":"The letters of Central and Eastern Europe (č ć ž š đ, ł ą ę, ř ě ů) and Western Europe (é è ü ö ñ). It offers Windows-1250 and Windows-1252, because those are the two code pages Excel picks by Windows region and nothing in the file records which one was used. A Cyrillic (1251) or Greek (1253) export needs a different code page and will still come out wrong - the page does not pretend otherwise."}},{"@type":"Question","name":"Why not just re-save the file as CSV UTF-8 in Excel?","acceptedAnswer":{"@type":"Answer","text":"That is the right move when you still have the file open in Excel and the letters look correct there. It does not work on a file that already contains the damage, and it does not work when the export is sent to you by somebody else's Excel. For those, re-save the cleaned copy you get from the browser tool."}},{"@type":"Question","name":"How do I know the paid repair is not the free tool with a price tag?","acceptedAnswer":{"@type":"Answer","text":"The free tool is rules on your own machine: encoding, quoting, ragged rows, duplicates. The paid one is a person opening the export and fixing what rules cannot decide - merged columns, two header rows, four spellings of one company - and it comes back with a report naming every row dropped and every address rewritten, within 24 hours, refundable for 14 days. If the file does not need that, the page above fixes it for nothing and says so."}}]}</script>
+<style>
+:root{--bg:#0b0f14;--card:#131a22;--text:#e6edf3;--muted:#8b98a9;--accent:#4f8cff;--green:#2ea043;--border:#22303c}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+.wrap{max-width:840px;margin:0 auto;padding:48px 24px}
+h1{font-size:2.15rem;line-height:1.22;margin-bottom:14px}h1 span{color:var(--accent)}
+h2{font-size:1.3rem;margin:36px 0 10px}
+.lead{font-size:1.1rem;color:var(--muted);margin-bottom:8px}
+.box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin:18px 0}
+.box p,.box li{color:var(--muted);font-size:.95rem}
+ul,ol{margin:10px 0 0 22px}li{margin:7px 0;color:var(--muted)}
+code{background:#0e151d;border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:.9em;color:#c8d6e5}
+.btn{display:inline-block;background:var(--accent);color:#fff;padding:13px 22px;border-radius:10px;font-weight:700;text-decoration:none}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.muted{color:var(--muted);font-size:.9rem}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.9rem}
+td,th{border:1px solid var(--border);padding:8px 10px;text-align:left;color:var(--muted)}
+th{color:var(--text);font-weight:600}
+.honest{border-left:3px solid var(--green);padding-left:14px}
+.footer{color:var(--muted);font-size:.85rem;border-top:1px solid var(--border);margin-top:44px;padding-top:18px}
+a{color:var(--accent)}
+</style></head><body><div class="wrap">
+
+<h1>CSV shows <span>question marks instead of letters</span></h1>
+<p class="lead">Names like Đorđe Milošević arrive as <code>?or?e Milo?evi?</code>, and French or German ones as <code>FranÃ§ois</code> or <code>MÃ¼ller</code>. The file is not corrupted. It was written in one character set and read in another.</p>
+
+<h2>What actually happened</h2>
+<p>Excel on a Serbian, Croatian, Polish, Czech or Hungarian Windows writes CSV in <b>Windows-1250</b>, and on most Western European Windows in <b>Windows-1252</b>. Almost every tool that reads CSV afterwards - n8n, Python, Google Sheets, a CRM importer - assumes <b>UTF-8</b> unless it is told otherwise. The bytes above 0x7F are not valid UTF-8, so they get replaced: by a question mark in some tools, by a black diamond <code>�</code> in others.</p>
+
+<table>
+<tr><th>What you see</th><th>What it means</th><th>Recoverable?</th></tr>
+<tr><td><code>?or?e</code>, <code>Milo?evi?</code>, <code>?esi?</code></td><td>Windows-1250 bytes read as UTF-8, replaced with <code>?</code></td><td>Yes, if you still have the original file</td></tr>
+<tr><td><code>FranÃ§ois</code>, <code>MÃ¼ller</code></td><td>UTF-8 read as Latin-1 (double encoding)</td><td>Yes, always - the bytes are all there</td></tr>
+<tr><td><code>?????</code> in a Cyrillic or Greek file</td><td>A different code page entirely (Windows-1251, 1253)</td><td>Only with the right code page; the tool below tests 1250/1252</td></tr>
+<tr><td>Letters already saved as <code>?</code> and the export overwritten</td><td>Information is gone from that file</td><td>No - and no tool can honestly promise otherwise</td></tr>
+</table>
+
+<h2>Fix 1 - free, in your browser, 30 seconds</h2>
+<div class="box">
+<p>Open the <a href="studio.html">browser CSV studio</a>, drop the file in, and it decodes it again with the other code page, repairs broken quotes and ragged rows, and gives you back a clean CSV plus a report naming every row it dropped. Nothing is uploaded - there is no network call at all, the file is read in the tab. It reads <code>.csv</code> and <code>.xlsx</code>.</p>
+<p style="margin-top:10px">If the names still look wrong, press the encoding switch on the page: it re-runs the same file as the other code page. Windows region is the only thing that decides 1250 vs 1252, and nothing inside the file records which one Excel used, so the page shows both rather than guessing.</p>
+<p style="margin-top:14px"><a class="btn" href="studio.html">Fix my CSV free - no upload</a></p>
+</div>
+
+<h2>Fix 2 - in Excel, if the characters are still intact</h2>
+<div class="box">
+<ol>
+<li>Open the original export (the one that still shows the letters correctly in Excel).</li>
+<li>File &rarr; Save As &rarr; <b>CSV UTF-8 (Comma delimited) (*.csv)</b>.</li>
+<li>Import that new file instead.</li>
+</ol>
+<p style="margin-top:10px" class="honest">This does not work on a file that was already saved with the damage, and it does not work when the file comes from someone else's Excel. Re-saving a broken file as UTF-8 stores the question marks faithfully.</p>
+</div>
+
+<h2>Fix 3 - a person does it, one file, back within 24 hours</h2>
+<div class="box">
+<p>Some exports do not yield to rules: two header rows, a column that was merged by hand, a mailing list where the same company appears under four spellings, or an import that still rejects the file after a clean. That is one export, done by a person, with the cleaned file and a report naming every row dropped and every address rewritten.</p>
+<p style="margin-top:10px"><b>$49</b> &middot; up to 5,000 rows<br><b>$79</b> &middot; up to 25,000 rows<br><b>$99</b> &middot; up to 100,000 rows</p>
+<p style="margin-top:10px" class="muted">14-day refund if the result does not match that description. If the file cannot be fixed, the answer is no rather than a charge.</p>
+<p style="margin-top:14px"><a class="btn ghost" href="https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=dragana.karans%40gmail.com&item_name=LeadFlow%20CSV%20repair%20-%20up%20to%205000%20rows&amount=49.00&currency_code=USD&return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fthanks.html&cancel_return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Ffix-csv-question-marks.html">Send one export - $49</a> &nbsp; <a href="mailto:perun.intelligence@gmail.com?subject=CSV%20repair%20-%20question">or ask first, free</a></p>
+</div>
+
+<h2>Questions people ask</h2>
+<div class="box"><p><b>Is the file corrupted, or just decoded wrong?</b></p><p style="margin-top:6px">Decoded wrong, in almost every case. Excel wrote the CSV in Windows-1250 or Windows-1252 and the next tool read it as UTF-8. The bytes for the accented letters are still in the file, they are just not valid UTF-8, so the reader replaces each one with a question mark or a black diamond. Decoding the same bytes with the right code page brings the letters back.</p></div>
+<div class="box"><p><b>Does the free tool upload my list anywhere?</b></p><p style="margin-top:6px">No. It is one HTML file that runs in the tab: the file is read with the browser's own file API, decoded locally and written back to a download. There is no fetch, no XHR, no analytics and no storage. You can open the page source and search for network calls - there are none.</p></div>
+<div class="box"><p><b>Will it fix a file where the letters are already question marks?</b></p><p style="margin-top:6px">Only if the original bytes are still there. If a program replaced the characters with a literal ? and then saved that file, the information is gone and no tool can restore it - the page will clean the rest of the file and say so. If the export still holds the original bytes (the usual case), the letters come back.</p></div>
+<div class="box"><p><b>Which languages does it handle?</b></p><p style="margin-top:6px">The letters of Central and Eastern Europe (č ć ž š đ, ł ą ę, ř ě ů) and Western Europe (é è ü ö ñ). It offers Windows-1250 and Windows-1252, because those are the two code pages Excel picks by Windows region and nothing in the file records which one was used. A Cyrillic (1251) or Greek (1253) export needs a different code page and will still come out wrong - the page does not pretend otherwise.</p></div>
+<div class="box"><p><b>Why not just re-save the file as CSV UTF-8 in Excel?</b></p><p style="margin-top:6px">That is the right move when you still have the file open in Excel and the letters look correct there. It does not work on a file that already contains the damage, and it does not work when the export is sent to you by somebody else's Excel. For those, re-save the cleaned copy you get from the browser tool.</p></div>
+<div class="box"><p><b>How do I know the paid repair is not the free tool with a price tag?</b></p><p style="margin-top:6px">The free tool is rules on your own machine: encoding, quoting, ragged rows, duplicates. The paid one is a person opening the export and fixing what rules cannot decide - merged columns, two header rows, four spellings of one company - and it comes back with a report naming every row dropped and every address rewritten, within 24 hours, refundable for 14 days. If the file does not need that, the page above fixes it for nothing and says so.</p></div>
+
+<h2>If you are automating this in n8n</h2>
+<p>The same decode step, as a Code node you can copy into your own workflow, with the code page made explicit: <a href="n8n-csv-encoding.html">n8n CSV to Google Sheets - the tested decode node</a>. The full pack, with the import, pattern and logging workflows, is on the <a href="./">main page</a>; the step-by-step import is in the <a href="docs.html">docs</a>.</p>
+
+<div class="footer">
+<p>LeadFlow. The free tool runs entirely in your browser and stores nothing; the paid repair is done by one person and answered from perun.intelligence@gmail.com. No tracking on this page.</p>
+<p style="margin-top:6px"><a href="./">LeadFlow</a> &middot; <a href="studio.html">CSV studio (free)</a> &middot; <a href="demo.html">demo</a> &middot; <a href="n8n-csv-encoding.html">n8n encoding node</a> &middot; <a href="docs.html">docs</a></p>
+</div>
+</div></body></html>
