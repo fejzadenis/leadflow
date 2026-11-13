@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Staffing order email to structured order — parsing demo</title>
+<meta name="description" content="How a forwarded, HTML-only staffing order email is parsed into client, headcount, date, shift and requirements — and why the quoted reply chain and HTML-only bodies break naive parsers.">
+<style>body{font:16px/1.65 system-ui,-apple-system,Segoe UI,sans-serif;max-width:820px;margin:48px auto;padding:0 20px;color:#111}h1{font-size:1.65rem;line-height:1.25}h2{margin-top:2.2rem;font-size:1.12rem}pre{background:#0f1115;color:#e6edf3;padding:14px;border-radius:8px;overflow-x:auto;font-size:.85rem;line-height:1.5}code{background:#f3f3f3;padding:1px 4px;border-radius:3px}table{border-collapse:collapse;width:100%;font-size:.93rem}td,th{border:1px solid #e2e2e2;padding:8px;vertical-align:top;text-align:left}.cta{margin-top:2.5rem;padding:18px;border-left:4px solid #111;background:#fafafa}.warn{background:#fff8e6;border-left:4px solid #d9a300;padding:12px;margin:1.5rem 0}</style>
+</head><body>
+<h1>One forwarded staffing order, parsed — before and after</h1>
+<p>The failure mode is almost never the AI step. It is what reaches the AI: a forwarded message where the useful request sits below a header block, or an HTML-only body that looks empty once you strip tags naively. Here is the logic, run on two real shapes.</p>
+
+<h2>Input 1 — HTML-only, forwarded</h2>
+<pre>&lt;div&gt;---------- Forwarded message ---------&lt;br&gt;
+From: &lt;b&gt;dana@northgatehotel.com&lt;/b&gt;&lt;br&gt;&lt;br&gt;
+We need &lt;b&gt;6&lt;/b&gt; associates for &lt;b&gt;Saturday 15 November&lt;/b&gt;,
+start &lt;b&gt;6:00 AM&lt;/b&gt; until 2:30 PM.&lt;br&gt;
+Two must have food-handling certs.&lt;br&gt;&lt;br&gt;Thanks, Dana&lt;/div&gt;</pre>
+
+<h2>Input 2 — plain text with a quoted reply chain</h2>
+<pre>Need 3 people Monday Nov 17, 7am-3pm. Loading dock work.
+
+--
+Marco Buell
+Bridgeline Events
+
+On Thu, 13 Nov 2026 at 09:12, Chris &lt;orders@…&gt; wrote:
+&gt; Thanks for the request, we will confirm shortly.</pre>
+
+<h2>The rules that do the work</h2>
+<table>
+<tr><th>Step</th><th>Why it matters</th></tr>
+<tr><td>Convert <code>&lt;br&gt;</code> and block endings to real newlines <em>before</em> stripping tags</td><td>Otherwise every line collapses into one, and line-anchored rules silently stop matching</td></tr>
+<tr><td>Cut the quoted history at the first <code>On … wrote:</code> / <code>-----Original Message-----</code></td><td>Keeps the new request and discards three rounds of old ones</td></tr>
+<tr><td>For forwarding, read <em>after</em> the header block, then drop <code>From:</code>/<code>Date:</code>/<code>Subject:</code> lines</td><td>A naive "cut at Forwarded message" leaves an empty body — the exact bug that makes an AI step return nulls</td></tr>
+<tr><td>Headcount needs the noun: <code>6 associates</code>, not "6"</td><td>Dates and times are also numbers; a bare-digit grab picks the wrong one</td></tr>
+<tr><td>Accept both <code>15 November</code> and <code>Nov 17</code></td><td>Day-first and abbreviated forms both arrive from the same client list</td></tr>
+<tr><td>Normalise whitespace last</td><td>Collapsing spaces before matching destroys the multi-space patterns you rely on</td></tr>
+</table>
+
+<h2>Actual output from running it</h2>
+<pre>{
+ "source": "html-forwarded",
+ "sender": "dana@northgatehotel.com",
+ "client_guess": "northgatehotel",
+ "weekday": "Saturday",
+ "associates": 6,
+ "date": "15 November",
+ "shift": "6:00 AM until 2:30 PM",
+ "requirement": "Two must have food-handling certs",
+ "kept_chars": 136
+}
+{
+ "source": "plain-with-quote",
+ "sender": "ops@bridgelineevents.com",
+ "client_guess": "bridgelineevents",
+ "weekday": "Monday",
+ "associates": 3,
+ "date": "Nov 17",
+ "shift": "7am-3pm",
+ "requirement": null,
+ "kept_chars": 148
+}</pre>
+
+<div class="warn"><strong>What still needs a human decision:</strong> "food-handling certs" is a requirement, not a field — send it to notes and flag it, do not invent a column. And a client guessed from the sender domain must be <em>verified</em> against the Clients board before an order is created; an ambiguous match should raise the blocked alert, never be guessed into a real order.</div>
+
+<h2>What happens next in the build</h2>
+<ul>
+<li>Create the order only if the client exists on the Clients board — otherwise alert, do not create</li>
+<li>Monday column values must be typed, not strings: dates as <code>{date}</code>, status by label, people as <code>{personsAndTeams}</code></li>
+<li>Hash the parsed order (client + date + shift + headcount) and check it first, so a retry never duplicates an order</li>
+</ul>
+
+<div class="cta">
+<p><strong>Have this exact problem?</strong> I repair the failing paths in existing Make/n8n scenarios and hand back a hardened version with acceptance checks. Diagnosis first if you prefer to keep it read-only.</p>
+<p>perun.intelligence@gmail.com — Make and n8n automation.</p>
+</div>
+</body></html>
