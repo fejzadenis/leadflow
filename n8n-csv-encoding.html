@@ -355,5 +355,5 @@ return items.map(function (item) {
 <div class="box"><p><b>Does it handle Cyrillic, Greek or Japanese CSV?</b></p><p style="margin-top:6px">No, and it will not pretend to. Detection is BOM, then strict UTF-8, then Windows-1250. A Windows-1251 Cyrillic export is decoded as 1250 and the letters come out wrong - use a Cyrillic-aware conversion, or ask the sender for a UTF-8 export.</p></div>
 <div class="box"><p><b>Does the node send my file anywhere?</b></p><p style="margin-top:6px">No. It is plain JavaScript inside your own n8n Code node: it reads the binary property, rewrites it as UTF-8 and returns it. No network call, no API key, no dependency.</p></div>
 
-<div class="footer">LeadFlow Automation Pack &middot; n8n workflows &middot; <a href="./">the pack</a> &middot; <a href="studio.html">free CSV repair</a> &middot; <a href="docs.html">documentation</a></div>
+<div class="footer">LeadFlow Automation Pack &middot; n8n workflows &middot; <a href="./">the pack</a> &middot; <a href="studio.html">free CSV repair</a> &middot; <a href="fix-csv-question-marks.html">question marks instead of letters</a> &middot; <a href="docs.html">documentation</a></div>
 </div></body></html>
