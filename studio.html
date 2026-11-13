@@ -880,6 +880,33 @@ function lfPaidMode(search) {
   return q.split('&').some(function (part) { return part === 'paid=1'; });
 }
 
+// A file the rules cannot read is not the visitor's failure - it is the one case where a person is
+// the product, so it is also the one case that must not dead-end. Pure on purpose (message, paid
+// flag in, HTML out) so the suite can assert what a stranger with a merged column actually reads.
+function lfDeadEndHtml(message, paid) {
+  var seen = String(message == null ? '' : message);
+  var subj = 'CSV repair - no email column found';
+  var body = 'The free cleaner read my file and said:\n' + seen + '\n\n' +
+    'What my file looks like: (everything in one column / two header rows / the address column is called something else)\n' +
+    'Rows: (roughly how many)\n' +
+    'The import tool is: (n8n / HubSpot / Pipedrive / Mailchimp / other)\n' +
+    'File: I will attach it after you reply\n';
+  var mail = '<a href="mailto:perun.intelligence@gmail.com?subject=' + encodeURIComponent(subj) +
+    '&body=' + encodeURIComponent(body) + '">email the file to a person</a>';
+  if (paid) {
+    return '<b>This file is not something a rule can decide, and it is covered by your payment.</b> ' + mail +
+      ' with the error your import shows - it is finished by hand within 24 hours, which is what you paid for. ' +
+      'Nothing is attached until you attach it yourself.';
+  }
+  return '<b>1. Free, and it often works:</b> name the address column <i>email</i> ' +
+    '(<i>Email - Work</i> and <i>Work Email</i> are accepted too), delete any title row above the header row, and press Run again.<br>' +
+    '<b>2. If the columns are merged, or the header row is wrong, a person has to do it:</b> ' + mail +
+    ' with the error your import shows. The first answer is free and names the price before you pay; ' +
+    'a one-file repair is flat by size - $49 up to 5,000 rows, $79 up to 25,000, $99 up to 100,000 - ' +
+    'back within 24 hours, 14-day refund if the delivered file does not match that. ' +
+    'Nothing is attached until you attach it yourself.';
+}
+
 var LF_OUT = null;
 // The raw bytes of the file the visitor picked, kept so the codepage guess can be overruled
 // without asking them to upload it again.
@@ -911,10 +938,15 @@ function renderStudio() {
   } catch (err) {
     box.innerHTML = '<span class="badge">' + esc(err.message) + '</span>';
     rej.innerHTML = '';
-    var askErr = document.getElementById('ask');
-    if (askErr) askErr.hidden = true;
     LF_OUT = null;
     ['d1', 'd2', 'd3'].forEach(function (id) { document.getElementById(id).disabled = true; });
+    // A file the rules cannot read is the one visitor the page used to give nothing to: the offer
+    // was hidden on the error path, so the person holding the worst file saw a red badge and left.
+    var askErr = document.getElementById('ask');
+    if (askErr) {
+      askErr.hidden = false;
+      askErr.innerHTML = lfDeadEndHtml(err.message, lfPaidMode(location.search));
+    }
     return;
   }
   LF_OUT = result;
