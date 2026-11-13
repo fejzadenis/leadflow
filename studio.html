@@ -507,6 +507,26 @@ function lfDecodeBytes(bytes) {
   return { text: new TextDecoder('latin1').decode(b), encoding: 'latin1' };
 }
 
+// Windows-1250 and Windows-1252 share every byte value and disagree on ~30 of them: 0xE8 is
+// "\u010D" in 1250 and "\u00E8" in 1252. The bytes cannot say which region wrote the file, so a
+// guess is unavoidable - but a wrong guess does not fail loudly, it silently renames people
+// ("L\u00e9v\u00eaque" arrives as "L\u00e9v\u0119que"). Both decoders are therefore reachable.
+function lfOther8bit(enc) {
+  if (enc === 'windows-1250') return 'windows-1252';
+  if (enc === 'windows-1252') return 'windows-1250';
+  return null;
+}
+
+// Pure on purpose: same bytes in, text out, so a test can prove the switch restores a real name.
+function lfDecodeAs(bytes, enc) {
+  return { text: new TextDecoder(enc).decode(bytes || []), encoding: enc };
+}
+
+var LF_ENC_SHORT = {
+  'windows-1250': 'Windows-1250 (Central European)',
+  'windows-1252': 'Windows-1252 (Western European)'
+};
+
 var LF_ENC_WHY = {
   'utf-8': 'UTF-8',
   'utf-16le': 'UTF-16 (Excel "Unicode text")',
@@ -729,6 +749,9 @@ function lfPaidMode(search) {
 }
 
 var LF_OUT = null;
+// The raw bytes of the file the visitor picked, kept so the codepage guess can be overruled
+// without asking them to upload it again.
+var LF_LAST_SRC = null;
 
 
 function lfSave(name, text) {
@@ -831,6 +854,20 @@ if (lfPaidMode(location.search)) {
   var _paidMail = document.getElementById('mailnow');
   if (_paidMail) _paidMail.innerHTML = 'Or mail the export to <a href="mailto:perun.intelligence@gmail.com?subject=CSV%20repair">perun.intelligence@gmail.com</a> with the subject <b>CSV repair</b> - a person finishes it by hand within 24 hours.';
 }
+// Same bytes, the other codepage, results re-run. This is the only correct answer to the
+// 1250/1252 ambiguity: Excel picks one by Windows region and nothing in the file records which.
+function lfSwitchEncoding() {
+  var src = LF_LAST_SRC;
+  if (!src) return;
+  var to = lfOther8bit(src.encoding);
+  if (!to) return;
+  var decoded = lfDecodeAs(src.bytes, to);
+  LF_LAST_SRC = { bytes: src.bytes, name: src.name, encoding: to };
+  document.getElementById('csv').value = String(decoded.text || '').replace(/^\uFEFF/, '');
+  lfShowEncoding(decoded, src.name);
+  renderStudio();
+}
+
 function lfShowEncoding(decoded, fileName) {
   var el = document.getElementById('enc');
   if (!el) return;
@@ -849,6 +886,17 @@ function lfShowEncoding(decoded, fileName) {
   el.innerHTML = 'Read <b>' + esc(fileName) + '</b> as <b>' + esc(label) + '</b>. ' +
     'A tool that assumes UTF-8 would have turned those names into question marks; they are intact here. ' +
     'The cleaned file downloads as UTF-8 with a BOM, so Excel opens it correctly too.';
+  var other = lfOther8bit(decoded.encoding);
+  if (other && LF_LAST_SRC) {
+    el.innerHTML += ' <br>Excel writes one of two 8-bit codepages depending on the Windows region, ' +
+      'and the file does not record which. If accented letters look foreign (a Polish \u0119 where a ' +
+      'French \u00EA belongs), re-read it as ' +
+      '<button type="button" id="encswitch" style="background:none;border:0;padding:0;font:inherit;' +
+      'color:#0a58ca;text-decoration:underline;cursor:pointer">' + esc(LF_ENC_SHORT[other] || other) +
+      '</button>.';
+    var sw = document.getElementById('encswitch');
+    if (sw) sw.addEventListener('click', function () { lfSwitchEncoding(); });
+  }
 }
 
 // One place that says "this file could not be read as a table", so the fallback advice is identical
@@ -893,6 +941,7 @@ document.getElementById('file').addEventListener('change', function (ev) {
     var decoded = lfDecodeBytes(bytes);
     var text = String(decoded.text || '').replace(/^\uFEFF/, '');
     document.getElementById('csv').value = text;
+    LF_LAST_SRC = { bytes: bytes, name: f.name, encoding: decoded.encoding };
     lfShowEncoding(decoded, f.name);
     renderStudio();
   };
