@@ -1,135 +1,191 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LeadFlow: 4 n8n workflows that clean and send leads</title>
-<meta name="description" content="Four n8n workflows for compliant B2B lead gen: clean a messy CSV, find email patterns, draft outreach, log to Sheets. Demo runs in your browser, no install.">
+<title>LeadFlow — turn a messy lead list into a clean, ready-to-work pipeline</title>
+<meta name="description" content="Four importable n8n workflows that clean a CSV, remove duplicates, generate candidate email addresses and prepare outreach drafts. No scraping, no subscriptions, no automatic sending. The demo runs in your browser.">
 <link rel="canonical" href="https://fejzadenis.github.io/leadflow/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="LeadFlow">
 <meta property="og:url" content="https://fejzadenis.github.io/leadflow/">
-<meta property="og:title" content="LeadFlow - 4 n8n workflows that turn a lead list into a ready-to-send pipeline">
-<meta property="og:description" content="Clean a CSV, generate candidate email patterns, draft the first message, log to Sheets. No scraping, no paid APIs. Demo runs in your browser, no install.">
+<meta property="og:title" content="LeadFlow — a messy lead list in, a ready-to-work pipeline out">
+<meta property="og:description" content="Clean CSV exports, remove duplicates, generate candidate contact addresses and prepare outreach drafts with four importable n8n workflows. No scraping. No subscriptions. No automatic email sending.">
 <meta property="og:image" content="https://fejzadenis.github.io/leadflow/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="LeadFlow - a lead list in, a ready-to-send pipeline out. Four importable n8n workflows, $49 launch.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="LeadFlow - 4 n8n workflows that turn a lead list into a ready-to-send pipeline">
-<meta name="twitter:description" content="No scraping, no paid APIs. Clean CSV, email patterns, outreach draft, Sheets log. Live demo in the browser.">
+<meta name="twitter:title" content="LeadFlow — four n8n workflows for lead lists you already own">
+<meta name="twitter:description" content="Clean, dedupe, generate candidate addresses, draft the first message. Demo runs entirely in your browser.">
 <meta name="twitter:image" content="https://fejzadenis.github.io/leadflow/og.png">
 <meta name="robots" content="index,follow">
+<link rel="stylesheet" href="assets/site.css">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"Product","name":"LeadFlow - n8n lead generation pack","description":"Four importable n8n workflows that clean a lead CSV, dedupe, generate candidate email patterns, draft outreach and log to Google Sheets. No scraping and no paid APIs.","url":"https://fejzadenis.github.io/leadflow/","image":"https://fejzadenis.github.io/leadflow/og.png","brand":{"@type":"Brand","name":"LeadFlow"},"offers":{"@type":"Offer","priceCurrency":"USD","price":"49.00","availability":"https://schema.org/InStock","url":"https://fejzadenis.github.io/leadflow/"},"isRelatedTo":{"@type":"SoftwareApplication","name":"n8n","applicationCategory":"BusinessApplication"}}
+{"@context":"https://schema.org","@type":"Product","name":"LeadFlow — n8n lead generation pack","description":"Four importable n8n workflows that clean a lead CSV, dedupe by email identity, generate candidate email patterns, draft outreach and log to Google Sheets. No scraping, no paid APIs.","url":"https://fejzadenis.github.io/leadflow/","image":"https://fejzadenis.github.io/leadflow/og.png","brand":{"@type":"Brand","name":"LeadFlow"},"offers":{"@type":"Offer","priceCurrency":"USD","price":"49.00","availability":"https://schema.org/InStock","url":"https://fejzadenis.github.io/leadflow/"},"isRelatedTo":{"@type":"SoftwareApplication","name":"n8n","applicationCategory":"BusinessApplication"}}
 </script>
-<style>
-:root{--bg:#0b0f14;--card:#131a22;--text:#e6edf3;--muted:#8b98a9;--accent:#4f8cff;--green:#2ea043;--border:#22303c}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.55;padding:34px 18px 64px}
-.wrap{max-width:900px;margin:0 auto}
-.badge{display:inline-block;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;color:#b9d0ff;border:1px solid rgba(79,140,255,.45);background:rgba(79,140,255,.12);border-radius:999px;padding:4px 11px}
-h1{font-size:30px;line-height:1.2;letter-spacing:-.4px;margin-top:14px}
-h1 span{color:var(--accent)}
-.sub{color:var(--muted);font-size:15px;margin-top:10px;max-width:720px}
-.btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}
-a.btn{display:inline-block;text-decoration:none;border-radius:9px;padding:12px 20px;font-size:14.5px;font-weight:600;background:var(--accent);color:#fff}
-a.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text);font-weight:500}
-a.btn:hover{filter:brightness(1.09)}
-.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-top:20px}
-h2{font-size:17px;margin-bottom:12px;letter-spacing:-.2px}
-ul{list-style:none}
-li{padding:9px 0;border-bottom:1px solid rgba(34,48,60,.6);font-size:14px}
-li:last-child{border-bottom:0}
-li b{color:var(--text);font-weight:600}
-li i{color:var(--muted);font-style:normal;display:block;font-size:12.8px;margin-top:2px}
-.price{font-size:26px;font-weight:700;letter-spacing:-.5px}
-.price s{color:var(--muted);font-size:15px;font-weight:500;margin-left:8px}
-.muted{color:var(--muted);font-size:13.5px}
-.foot{color:var(--muted);font-size:12.5px;margin-top:26px;line-height:1.7}
-a{color:#8fb7ff}
-</style></head><body><div class="wrap">
-<span class="badge">n8n &middot; no scraping &middot; no paid APIs</span>
-<h1>LeadFlow: a lead list in, a <span>ready-to-send pipeline</span> out</h1>
-<p class="sub">Four importable n8n workflows that clean a CSV, decide which leads are usable, generate candidate email addresses from name + company domain, and draft the first message &mdash; then log every row to Google Sheets. No LinkedIn scraping, so no account bans and no API bills.</p>
-<div class="btns">
-<a class="btn" href="demo.html">Run the live demo (no install)</a>
-<a class="btn ghost" href="#get">Get the pack &mdash; $49 launch</a>
-<a class="btn ghost" href="studio.html">Repair a broken CSV free &mdash; no install</a>
-</div>
+</head><body>
 
-<div class="card">
-<h2>What is in the pack</h2>
-<ul>
-<li><b>01 &middot; CSV &rarr; clean leads (dedupe by email identity)</b><i>Header variants, stray spaces, casing, missing fields &mdash; each rejected row gets a written reason.</i></li>
-<li><b>02 &middot; Webhook &rarr; same sheet</b><i>Any form or app can POST a lead; the pipeline keeps one source of truth.</i></li>
-<li><b>03 &middot; Outreach draft</b><i>Optional AI-written first message (your own API key) or a template that needs no AI at all.</i></li>
-<li><b>04 &middot; Email patterns</b><i>Candidate addresses from name + domain, with diacritics folded (&Scaron;i&scaron;i&#263;, Kova&#269;, M&uuml;ller). You verify before sending.</i></li>
-<li><b>Docs that name the failures</b><i>Setup guide, 2-minute walkthrough, and a troubleshooting page covering sheet not found, credential errors, DeepSeek 401, the n8n 2.x file-access rule and webhook modes. <a href="docs.html">Read them before buying</a>.</i></li>
-</ul>
-</div>
+<header class="site-head"><div class="wrap">
+  <a class="brand" href="/leadflow/"><span class="dot"></span>LeadFlow</a>
+  <nav class="nav">
+    <a href="demo.html">Live demo</a>
+    <a href="docs.html">Docs</a>
+    <a href="studio.html">Free CSV repair</a>
+    <a href="#pricing">Pricing</a>
+  </nav>
+</div></header>
 
-<div class="card">
-<h2>Why it exists</h2>
-<p class="muted">Most &ldquo;lead generation&rdquo; automation means scraping LinkedIn or buying a list &mdash; which is how accounts get restricted and how inboxes get burned. This pack works on data you already have, writes down why it removed a row, and never sends an email by itself. You stay the sender; the machine does the boring part.</p>
-</div>
+<section class="hero"><div class="wrap hero-grid">
+  <div>
+    <span class="eyebrow">n8n · no scraping · no paid APIs</span>
+    <h1>Turn messy lead lists into a clean, ready-to-work pipeline</h1>
+    <p class="lead">Four importable n8n workflows that clean a CSV, remove duplicates, generate candidate contact addresses and prepare outreach drafts. No scraping, no subscriptions, and nothing is sent automatically — you stay the sender.</p>
+    <div class="btns">
+      <a class="btn btn-primary" href="demo.html">Try the live demo</a>
+      <a class="btn btn-ghost" href="#pricing">Get all 4 workflows — $49</a>
+    </div>
+    <p class="hero-note">Runs on data you already have. Demo processes files in your browser — nothing is uploaded.</p>
+  </div>
 
-<div class="card">
-<h2>A real run, published unedited</h2>
-<p class="muted">One 12-row export in the shape a CRM or spreadsheet actually produces: diacritics, duplicates under two spellings, two unusable addresses. Nothing below is a mock-up - the input, the cleaned file and the full report are downloadable.</p>
-<ul>
-<li><b>12 rows in &rarr; 7 usable leads</b><i>5 removed, each with its written reason: 3 duplicates (same person, different spelling), 2 addresses that cannot be fixed ("stefan(at)dokic.rs", "mila.saric@").</i></li>
-<li><b>31 candidate addresses, 7 first-touch drafts, 0 emails sent</b><i>0 network calls, 0 credentials. The pipeline never sends anything by itself; you stay the sender.</i></li>
-</ul>
-<div class="btns">
-<a class="btn ghost" href="sample/before-report.md">Read the report</a>
-<a class="btn ghost" href="sample/before.csv">See the messy input</a>
-<a class="btn ghost" href="sample/before-cleaned.csv">See the cleaned output</a>
-</div>
-</div>
+  <div class="panel" aria-label="Real run on a 12-row export">
+    <div class="panel-bar"><i></i><i></i><i></i><span class="panel-title">sample/before.csv → cleaned</span></div>
+    <div class="panel-body">
+      <table class="data">
+        <tr><th>Name</th><th>Email</th><th>Result</th></tr>
+        <tr><td>Šišić, Marko</td><td>marko.sisic@acme.com</td><td><span class="tag tag-ok">kept</span></td></tr>
+        <tr class="row-bad"><td>Marko Šišić</td><td>marko.sisic@acme.com</td><td><span class="tag tag-dup">duplicate</span></td></tr>
+        <tr><td>Kovač, Ana</td><td>ana.kovac@north.io</td><td><span class="tag tag-ok">kept</span></td></tr>
+        <tr class="row-bad"><td>Stefan Đokić</td><td>stefan(at)dokic.rs</td><td><span class="tag tag-bad">rejected</span></td></tr>
+        <tr class="row-bad"><td>Mila Šarić</td><td>mila.saric@</td><td><span class="tag tag-bad">rejected</span></td></tr>
+      </table>
+    </div>
+    <div class="summary">
+      <div><b>12</b>rows in</div>
+      <div><b>7</b>usable leads</div>
+      <div><b>5</b>removed, each with a reason</div>
+    </div>
+  </div>
+</div></section>
 
-<div class="card" id="get">
-<h2>Get the pack</h2>
-<p class="price">$49 <s>$79 after launch</s></p>
-<p class="muted" style="margin-top:8px">Four workflows (JSON, ready to import), the zero-setup demo workflow, the first-run guide, the troubleshooting page built from real failures, and a commercial-use license. 14-day refund on request. One-time payment, no subscription.</p>
-<div class="btns">
-<a class="btn" href="https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=dragana.karans%40gmail.com&item_name=LeadFlow%20Automation%20Pack&amount=49.00&currency_code=USD&return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fthanks.html&cancel_return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2F">Pay $49 via PayPal</a> <a class="btn ghost" href="https://github.com/fejzadenis/leadflow/issues/new?title=LeadFlow%20question">Ask a question</a>
-<a class="btn ghost" href="demo.html">Try it first</a>
-<a class="btn ghost" href="docs.html">Read the documentation first</a>
-</div>
-<p class="muted" data-receipt="payee" style="margin-top:12px"><b>What the receipt says:</b> the charge comes from our billing account <code>dragana.karans@gmail.com</code> &mdash; that is this site, not a stranger. Files, questions and the refund go to <code>perun.intelligence@gmail.com</code>.</p>
-<div class="payrails" style="margin-top:18px;padding:16px;border:1px solid rgba(255,255,255,.14);border-radius:10px">
-  <p style="margin:0 0 8px;font-weight:600">Other ways to pay</p>
-  <p class="muted" style="margin:0 0 10px">Same $49, same pack. Use whichever is easiest where you are — I do not need you to hold a US card.</p>
-  <ul class="muted" style="margin:0 0 10px;padding-left:18px">
-    <li><strong>USDC / USDT on TRON (TRC20):</strong> <code>TAdZ31uBBhnJZbtChPeEenobHZP3TMP9xt</code></li>
-    <li><strong>USDC / USDT on Ethereum (ERC20):</strong> <code>0x34d2b5c6647b235520d268a96051a57658e34e34</code></li>
-    <li><strong>Bank transfer or Payoneer:</strong> email <a href="mailto:perun.intelligence@gmail.com?subject=LeadFlow%20-%20invoice%20request">perun.intelligence@gmail.com</a> and I send an invoice the same day.</li>
-  </ul>
-  <p class="muted" style="margin:0">Crypto: send the exact amount and email the transaction hash. The download link goes out on first confirmation — usually minutes, occasionally up to an hour. Send from an exchange that supports the network you pick; wrong-network transfers are not recoverable.</p>
-</div>
-<p class="muted" style="margin-top:12px">How the handover works: pay with the button (PayPal, $49 one-time) and the receipt page hands you the ZIP immediately - the four workflows, the guide and the license, with no email round-trip and no account to create. Prefer it mailed? Write <b>pack</b> to <a href="mailto:perun.intelligence@gmail.com?subject=LeadFlow%20pack">perun.intelligence@gmail.com</a>. A question before paying, or a button that will not open? That same address, and a person answers.<br><b>Not ready to pay?</b> The pack's own <a href="docs.html">README, setup steps, demo script and troubleshooting page</a> are published unedited &mdash; read all of it first.</p>
-</div>
+<section><div class="wrap">
+  <div class="section-head">
+    <h2>Four workflows, one consistent pipeline</h2>
+    <p class="lead">Each one is a separate importable JSON file, but they share the same data rules — so a lead that survives step 01 behaves the same way in steps 02 to 04.</p>
+  </div>
+  <div class="grid-4">
+    <div class="card"><span class="num">01</span><h3>CSV → clean leads</h3><p>Header variants, stray spaces, casing, missing fields. Duplicates are merged by email identity, and every rejected row gets a written reason instead of disappearing.</p></div>
+    <div class="card"><span class="num">02</span><h3>Webhook → Google Sheets</h3><p>Any form or app can POST a lead. The workflow normalises it and keeps one sheet as the single source of truth.</p></div>
+    <div class="card"><span class="num">03</span><h3>Outreach drafts</h3><p>First-contact drafts from a template with no AI at all, or AI-written if you add your own API key. Nothing is ever sent by the workflow.</p></div>
+    <div class="card"><span class="num">04</span><h3>Email patterns</h3><p>Candidate addresses from name + company domain, with diacritics folded correctly (Šišić, Kovač, Müller). Candidates, not verified addresses — you check before sending.</p></div>
+  </div>
+</div></section>
 
-<div class="card">
-<h2>Not buying a workflow pack &mdash; just one broken file?</h2>
-<p class="muted">Then the <a href="studio.html">free browser CSV repair</a> may be all you need: it fixes, dedupes and re-downloads a CSV without an upload or an account. When the file still will not import &mdash; a merged column, two header rows, an export saved in the wrong encoding &mdash; the same page sells a one-file repair: <b>$49</b> up to 5,000 rows, <b>$79</b> up to 25,000, <b>$99</b> up to 100,000. You get the cleaned file plus a report naming every dropped row, back within 24 hours, 14-day refund if it does not match the description.</p>
-</div>
+<section style="background:var(--bg-soft)"><div class="wrap">
+  <div class="section-head">
+    <h2>A real run, published unedited</h2>
+    <p class="lead">One 12-row export in the shape a CRM actually produces: diacritics, the same person under two spellings, two addresses that cannot be fixed. The input, the cleaned file and the full report are downloadable — check the output before you pay anything.</p>
+  </div>
+  <div class="btns">
+    <a class="btn btn-ghost" href="sample/before-report.md">Read the report</a>
+    <a class="btn btn-ghost" href="sample/before.csv">See the messy input</a>
+    <a class="btn btn-ghost" href="sample/before-cleaned.csv">See the cleaned output</a>
+    <a class="btn btn-ghost" href="studio.html">Repair your own CSV free</a>
+  </div>
+</div></section>
 
-<div class="card">
-<h2>Free workflows (take these now)</h2>
-<ul>
-<li><b><a href="free/leadflow-free-lead-dedupe.json">Remove duplicate leads from a CSV</a></b><i>Import the JSON into n8n, press Execute.</i></li>
-<li><b><a href="free/leadflow-free-clean-csv.json">Clean a messy lead CSV export</a></b><i>Fixes headers, spaces, casing; reports what it dropped.</i></li>
-<li><b><a href="free/leadflow-free-email-patterns.json">Generate candidate email addresses</a></b><i>Name + domain in, patterns out. Verify before sending.</i></li>
-<li><b><a href="free/">All three free workflows on one page</a></b><i>Downloads, what each one fixes, and what the paid pack adds on top of them.</i></li>
-<li><b><a href="dedupe-leads-n8n.html">Dedupe a lead list by email in n8n</a></b><i>The exact Code node, run on a 12-row export: 3 duplicates merged, 2 addresses rejected with a reason, and the duplicates an email key cannot catch.</i></li>
-<li><b><a href="n8n-csv-encoding.html">Names arrive as ???? in your Google Sheet?</a></b><i>The CSV encoding fix: the exact decode node workflow 01 uses, free to copy, plus what it cannot fix.</i></li>
-<li><b><a href="fix-csv-question-marks.html">CSV opens with question marks instead of letters?</a></b><i>The symptom in the words it is searched with: why it happens, the free fix, and when a person has to do it.</i></li>
-<li><b><a href="invalid-record-length.html">"Invalid Record Length: columns length is 7, got 8" on import?</a></b><i>One malformed row, the twenty-second way to find it, and the Code node that pads ragged rows instead of failing.</i></li>
-<li><b><a href="fix-mojibake-csv.html">Letters arrive as Ã©, Ã± or Ã¼ instead of é?</a></b><i>Double-encoded text, explained: why the original bytes are still there, the free exact reversal, and when a person is needed.</i></li>
-        <li><b><a href="csv-one-column-n8n.html">n8n put the whole CSV in one column?</a></b><i>Semicolon or tab export, not a broken file: the delimiter sniffer, what it did to the same 12 leads saved three ways, and the free fix.</i></li>
-        <li><b><a href="studio.html">No n8n yet? Repair the CSV free in your browser</a></b><i>Runs in your browser: cleaned CSV, patterns CSV, and a reason for every rejected row.</i></li>
-</ul>
-</div>
+<section><div class="wrap">
+  <div class="section-head">
+    <h2>Free resources vs the complete pack</h2>
+    <p class="lead">The free tools are genuinely free and not deliberately limited. The pack is for people who want the whole pipeline wired together and documented, rather than assembling it themselves.</p>
+  </div>
+  <table class="compare">
+    <thead><tr><th>What you get</th><th>Free</th><th>LeadFlow pack — $49</th></tr></thead>
+    <tbody>
+      <tr><td>Browser CSV repair (dedupe, fix, download)</td><td class="yes">Included</td><td class="yes">Included</td></tr>
+      <tr><td>One free n8n workflow (clean + dedupe)</td><td class="yes">Included</td><td class="yes">Included</td></tr>
+      <tr><td>All four coordinated workflows as importable JSON</td><td class="no">—</td><td class="yes">Included</td></tr>
+      <tr><td>Webhook intake into Google Sheets</td><td class="no">—</td><td class="yes">Included</td></tr>
+      <tr><td>Outreach drafts, template or AI with your own key</td><td class="no">—</td><td class="yes">Included</td></tr>
+      <tr><td>Candidate email patterns with diacritic handling</td><td class="no">—</td><td class="yes">Included</td></tr>
+      <tr><td>Setup guide, walkthrough, troubleshooting built from real failures</td><td>Public docs</td><td class="yes">Included</td></tr>
+      <tr><td>Commercial-use license</td><td class="no">—</td><td class="yes">Included</td></tr>
+      <tr><td>Time saved wiring four separate workflows yourself</td><td class="no">—</td><td class="yes">Days, not hours</td></tr>
+    </tbody>
+  </table>
+</div></section>
 
-<p class="foot"><b>Honest limits:</b> patterns are candidates, not verified addresses &mdash; you confirm each one before sending. The template draft in the free workflows is not AI; workflow 03 in the pack adds an optional AI draft using your own key. The demo runs entirely in your browser and makes no network request. Google Sheets needs your own Google account; n8n needs to be installed (desktop, Docker, or cloud).</p>
-</div></body></html>
+<section id="pricing" style="background:var(--bg-soft)"><div class="wrap grid-2">
+  <div class="price-card">
+    <h2>LeadFlow pack</h2>
+    <p class="muted small">One-time payment. No subscription, no account, no upsell.</p>
+    <p class="price mt-24">$49 <s>$79 after launch</s></p>
+    <ul class="list">
+      <li><span class="tick">✓</span>Four workflows (JSON, ready to import)</li>
+      <li><span class="tick">✓</span>Zero-setup demo workflow</li>
+      <li><span class="tick">✓</span>First-run guide and troubleshooting page</li>
+      <li><span class="tick">✓</span>Commercial-use license</li>
+      <li><span class="tick">✓</span>14-day refund on request</li>
+    </ul>
+    <div class="btns mt-24">
+      <a class="btn btn-primary" href="https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=dragana.karans%40gmail.com&item_name=LeadFlow%20Automation%20Pack&amount=49.00&currency_code=USD&return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fthanks.html&cancel_return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2F">Pay $49 via PayPal</a>
+      <a class="btn btn-ghost" href="demo.html">Try it first</a>
+    </div>
+    <p class="muted small mt-16" data-receipt="payee"><b>What the receipt says:</b> the charge comes from our billing account <code>dragana.karans@gmail.com</code> — that is this site, not a stranger. Files, questions and the refund go to <code>perun.intelligence@gmail.com</code>.</p>
+
+    <div class="rails">
+      <p style="margin:0 0 8px;font-weight:600;color:var(--text)">Other ways to pay</p>
+      <p class="muted small" style="margin:0 0 10px">Same $49, same pack. Use whichever is easiest where you are — you do not need a US card.</p>
+      <ul class="list" style="margin-top:0">
+        <li><span class="tick">·</span><span><strong>USDC / USDT on TRON (TRC20):</strong> <code>TAdZ31uBBhnJZbtChPeEenobHZP3TMP9xt</code></span></li>
+        <li><span class="tick">·</span><span><strong>USDC / USDT on Ethereum (ERC20):</strong> <code>0x34d2b5c6647b235520d268a96051a57658e34e34</code></span></li>
+        <li><span class="tick">·</span><span><strong>Bank transfer or Payoneer:</strong> email <a href="mailto:perun.intelligence@gmail.com?subject=LeadFlow%20-%20invoice%20request">perun.intelligence@gmail.com</a> and an invoice goes out the same day.</span></li>
+      </ul>
+      <p class="muted small" style="margin:10px 0 0">Crypto: send the exact amount and email the transaction hash. The download link goes out on first confirmation — usually minutes, occasionally up to an hour. Wrong-network transfers are not recoverable.</p>
+    </div>
+  </div>
+
+  <div>
+    <h2>What happens after you pay</h2>
+    <ul class="list">
+      <li><span class="tick">1</span><span>PayPal confirms, and the receipt page hands you the ZIP immediately — no email round-trip, no account to create.</span></li>
+      <li><span class="tick">2</span><span>Inside: four workflow JSON files, the first-run guide, the troubleshooting page and the license.</span></li>
+      <li><span class="tick">3</span><span>Import the JSON into n8n, connect Google Sheets, run it on your own file.</span></li>
+      <li><span class="tick">4</span><span>Stuck? Write to <a href="mailto:perun.intelligence@gmail.com?subject=LeadFlow%20pack">perun.intelligence@gmail.com</a> — a person answers, and the refund is 14 days on request.</span></li>
+    </ul>
+    <p class="muted small mt-16">Prefer it mailed? Write <b>pack</b> to the same address. A question before paying, or a button that will not open? Same address.</p>
+    <p class="muted small mt-16"><b>Not ready to pay?</b> The pack's own <a href="docs.html">README, setup steps, demo script and troubleshooting page</a> are published unedited — read all of it first.</p>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="section-head"><h2>Just one broken file?</h2><p class="lead">If you only have one CSV that will not import, you may not need a workflow pack at all.</p></div>
+  <div class="grid-2">
+    <div class="card"><h3>Free browser repair</h3><p>The <a href="studio.html">CSV studio</a> fixes, dedupes and re-downloads a file without an upload or an account. Nothing leaves your machine.</p></div>
+    <div class="card"><h3>Human-assisted repair</h3><p>For files that need more work than a browser tool can do: <b>$49</b> up to 5,000 rows, <b>$79</b> up to 25,000, <b>$99</b> up to 100,000. Write to <a href="mailto:perun.intelligence@gmail.com?subject=CSV%20repair">perun.intelligence@gmail.com</a> with the file attached.</p></div>
+  </div>
+</div></section>
+
+<section style="background:var(--bg-soft)"><div class="wrap">
+  <div class="section-head"><h2>Honest limits</h2><p class="lead">These are stated here because they matter more than the feature list.</p></div>
+  <div class="faq">
+    <details open><summary>No LinkedIn scraping, ever</summary><p>The pack works on data you already own. That is why it does not put your account at risk.</p></details>
+    <details><summary>It does not send email for you</summary><p>Workflow 03 prepares drafts. You review and send. Nothing leaves your outbox without you.</p></details>
+    <details><summary>Candidate addresses are not verified addresses</summary><p>Workflow 04 generates likely patterns from name and domain. Deliverability is checked by you or by a verification service you choose — the pack does not claim to verify.</p></details>
+    <details><summary>You need your own n8n and Google Sheets</summary><p>Self-hosted or cloud n8n, plus a Google account for the Sheets steps. The free template path needs no paid API; AI drafting needs your own key.</p></details>
+    <details><summary>What it will not do</summary><p>It will not buy you a list, will not bypass a platform's terms, and will not promise a reply rate. It cleans, structures and drafts.</p></details>
+  </div>
+</div></section>
+
+<section><div class="wrap center">
+  <h2>Ready when your data is</h2>
+  <p class="lead" style="margin:12px auto 24px">Run the demo on your own CSV in the browser first. If the output looks right, the pack does the same thing inside n8n.</p>
+  <div class="btns" style="justify-content:center">
+    <a class="btn btn-primary" href="demo.html">Try the live demo</a>
+    <a class="btn btn-ghost" href="#pricing">Get all 4 workflows — $49</a>
+  </div>
+</div></section>
+
+<footer class="site-foot"><div class="wrap">
+  <span>LeadFlow — four n8n workflows for lead lists you already own.</span>
+  <span><a href="docs.html">Docs</a> · <a href="demo.html">Demo</a> · <a href="studio.html">CSV studio</a> · <a href="mailto:perun.intelligence@gmail.com">Contact</a></span>
+</div></footer>
+
+</body></html>
