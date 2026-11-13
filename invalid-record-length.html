@@ -16,7 +16,8 @@
 {"@type":"Question","name":"Does 'Skip records with errors' fix it?","acceptedAnswer":{"@type":"Answer","text":"No. It hides the problem by dropping every affected row, and it drops the data you needed. Turn it off while you diagnose, so the node fails loudly on the exact line, then repair the rows instead of discarding them."}},
 {"@type":"Question","name":"Why does my file work in Excel and fail in n8n?","acceptedAnswer":{"@type":"Answer","text":"Excel is lenient: it accepts a trailing delimiter, pads short rows and guesses the delimiter from the first line. n8n's Extract from File node is strict about the delimiter you select and refuses rows whose field count differs from the header. A file that 'looks fine' can therefore hold rows the node rejects."}},
 {"@type":"Question","name":"Is the repair done in the browser?","acceptedAnswer":{"@type":"Answer","text":"Yes. The free repair page reads the file through the browser's own file API, repairs it in the tab and writes a download. There is no upload, no fetch, no analytics and no storage, and you can confirm that by searching the page source for network calls."}},
-{"@type":"Question","name":"What if the export is too damaged for a rule to fix?","acceptedAnswer":{"@type":"Answer","text":"Then a person opens it: $49 for one export up to 5,000 rows, $79 up to 25,000, $99 up to 100,000. You get the cleaned file plus a report naming every dropped row and every value rewritten, back within 24 hours, refundable for 14 days if it does not match the description."}}]}</script>
+{"@type":"Question","name":"What if the export is too damaged for a rule to fix?","acceptedAnswer":{"@type":"Answer","text":"Then a person opens it: $49 for one export up to 5,000 rows, $79 up to 25,000, $99 up to 100,000. You get the cleaned file plus a report naming every dropped row and every value rewritten, back within 24 hours, refundable for 14 days if it does not match the description."}},
+{"@type":"Question","name":"Why does the error say expect 1, got 2 when my file has many columns?","acceptedAnswer":{"@type":"Answer","text":"Because the node is splitting on the wrong delimiter. A semicolon-separated export read with comma selected gives the header a single field, and so does every row that contains no comma. Only the rows whose free text does contain a comma split into two fields, so the import fails on one line that looks no different from the rest. Set the delimiter to the character the file actually uses, or check the first line for semicolons."}}]}</script>
 <style>
 :root{--bg:#0b0f14;--card:#131a22;--text:#e6edf3;--muted:#8b98a9;--accent:#4f8cff;--green:#2ea043;--border:#22303c}
 *{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
@@ -58,7 +59,7 @@ a{color:var(--accent)}
 <tr><th>What you see</th><th>What it means</th></tr>
 <tr><td><code>columns length is 7, got 8</code></td><td>One field too many &mdash; a trailing delimiter, or an unquoted value containing the delimiter</td></tr>
 <tr><td><code>columns length is 8, got 7</code></td><td>One field too few &mdash; the exporter omitted the last empty cell, or a value was lost upstream</td></tr>
-<tr><td><code>got 1</code></td><td>The delimiter is wrong: the file is semicolon-separated and the node is set to comma, so every row is a single field</td></tr>
+<tr><td><code>got 1</code> or <code>expect 1, got 2</code></td><td>The delimiter is wrong: the file is semicolon-separated and the node is set to comma, so the header and most rows hold one field &mdash; only the rows whose free text contains a comma are rejected, which is why the line number looks random</td></tr>
 <tr><td><code>got 13</code> when the header has 7</td><td>A field contains the delimiter and is not quoted, so one cell has been split into several</td></tr>
 </table>
 
@@ -123,6 +124,66 @@ return rows;</code></pre>
 <li><b>It does not understand quoted delimiters.</b> If a cell contains the delimiter inside quotes (<code>"Smith, John"</code> with a comma separator), splitting on the delimiter breaks it. That needs a real parser &mdash; which is what the node already is, and why Fix 1 exists.</li>
 <li><b>It cannot invent a column.</b> If two columns were merged upstream, padding produces empty cells, not recovered data. That is a repair, not a reformat.</li>
 </ul>
+
+
+<h2>Why the count changes halfway through a file</h2>
+<p>The message names one line, but the cause is usually the delimiter, not that line. A semicolon-separated export read with the node set to comma gives the header <b>one</b> field. Every row then holds one field too &mdash; until a row whose free text contains a comma arrives, and that row splits into two. That is the real shape of <code>Invalid Record Length: expect 1, got 2</code>: the line number looks random because only the rows with a comma in a text column fail.</p>
+<p>Four cases, measured on fixtures, so you can match yours:</p>
+<table>
+<tr><th>File</th><th>Result</th></tr>
+<tr><td>Semicolon file, comma delimiter, one row with a comma in a note</td><td>One rejected row: 2 fields against a 1-field header</td></tr>
+<tr><td>Row ending with the delimiter</td><td>One rejected row: one field too many</td></tr>
+<tr><td>Short row (2 of 3 fields)</td><td>One rejected row: one field too few</td></tr>
+<tr><td>Blank line, including a trailing one at the end of the file</td><td>One rejected row &mdash; an empty line is a single empty field</td></tr>
+</table>
+<p>And one failure the error never reports: <b>an unbalanced quote</b> (<code>"he said "hi" ok"</code>, from an exporter that stripped the inner quotes) swallows the following rows into one cell. The parser accepts it, the import reports success, and the rows are gone. If your row count is lower than the file's line count, that is what happened.</p>
+
+<h3>The Code node that names every bad row</h3>
+<p>Paste this over the CSV node while you diagnose: it parses quote-aware and returns only the rows whose field count differs from the header, each with the line it starts on.</p>
+<pre><code>// n8n Code node - Run Once for All Items
+// Input: one item whose json.data holds the raw CSV text (read the file as text first)
+const DELIM = ',';   // set to ';' if the file is semicolon-separated
+const text = $input.first().json.data;
+
+// quote-aware scan: a quoted field may contain the delimiter and line breaks
+const records = [];
+let fields = [], field = '', inQuotes = false, line = 1, recordLine = 1, started = false;
+for (let i = 0; i &lt; text.length; i++) {
+  const c = text[i];
+  if (!started) { recordLine = line; started = true; }
+  if (inQuotes) {
+    if (c === '"') {
+      if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false;
+    } else {
+      if (c === '\n') line++;
+      field += c;
+    }
+    continue;
+  }
+  if (c === '"' &amp;&amp; field === '') { inQuotes = true; continue; }
+  if (c === DELIM) { fields.push(field); field = ''; continue; }
+  if (c === '\r') continue;
+  if (c === '\n') {
+    fields.push(field);
+    records.push({ line: recordLine, fields });
+    fields = []; field = ''; line++; started = false;
+    continue;
+  }
+  field += c;
+}
+if (started || field !== '' || fields.length) { fields.push(field); records.push({ line: recordLine, fields }); }
+
+const header = records.shift();
+const want = header ? header.fields.length : 0;
+const bad = records.filter(r =&gt; r.fields.length !== want);
+return bad.slice(0, 50).map(r =&gt; ({ json: {
+  line: r.line,
+  fields_found: r.fields.length,
+  header_fields: want,
+  diff: r.fields.length - want,
+  first_cells: r.fields.slice(0, 3).join(' | ').slice(0, 120),
+} }));</code></pre>
+<p class="muted">Tested on 11 fixtures &mdash; clean file, CRLF endings, trailing delimiter, short row, blank last line, quoted field containing the delimiter, quoted field spanning two lines, semicolon file, semicolon file with a comma in the text, Excel-stripped inner quotes, trailing blank line. The seven that should pass return no rows; the four that should fail name the right line and the right difference. Set <code>DELIM</code> to the delimiter you selected in the CSV node.</p>
 
 <h2>When a person has to do it</h2>
 <p>The rule of thumb: <b>a rule can fix formatting, only a person can fix a decision.</b> Formatting is a trailing delimiter, a wrong code page, a short row, a duplicate. A decision is which of two header rows is the real one, how to split a column that was merged on export, whether <code>ACME Ltd</code> and <code>Acme Limited</code> are one customer, and which of two conflicting phone numbers is current.</p>
