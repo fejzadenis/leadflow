@@ -98,6 +98,7 @@ B2,&quot;Smith, John&quot;,&quot;Bolt, 3/8&quot;,4"></textarea>
 
 <h2>The Code node (tested on 5 fixtures)</h2>
 <p>Put this in a Code node set to <b>Run Once for All Items</b>, after the CSV node, and set <code>KEY</code> and <code>CHILD</code> to your columns. It was run against fixtures covering quoted commas, CRLF, a semicolon file, a BOM, blank lines, short rows and single-row groups; the shapes below are its actual output.</p>
+<p>The same parser also lives in a small repository with 12 checks you can run yourself (<code>node test.js</code>, no dependencies) and a CLI that prints the nested JSON for a whole file: <a href="https://github.com/fejzadenis/n8n-csv-to-json">fejzadenis/n8n-csv-to-json</a>.</p>
 <pre><code>// Code node - Run Once for All Items
 const KEY = 'order_id';   // the column that identifies one parent
 const CHILD = 'items';    // name of the child array
