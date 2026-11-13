@@ -44,16 +44,7 @@ a{color:#8fb7ff}
 .cta a.btn{display:inline-block;margin-top:10px;text-decoration:none;border-radius:9px;padding:11px 18px;background:var(--accent);color:#fff;font-weight:600;font-size:14px}
 .paid .cta{display:none}
 .card.paidban{border:1px solid rgba(80,190,120,.45);background:rgba(80,190,120,.08)}
-</style><style>
-.lfnav{display:flex;gap:16px;align-items:center;font-size:13.5px;margin-bottom:20px;flex-wrap:wrap}
-.lfnav a{color:#93a1b2;text-decoration:none}
-.lfnav a:hover{color:#e8eef5}
-.lfnav .lfnav-cta{margin-left:auto;background:#4f8cff;color:#fff;padding:8px 14px;border-radius:8px;font-weight:600}
-.lfnav .lfnav-cta:hover{filter:brightness(1.08);color:#fff}
-</style>
-</head><body>
-<div class="lfnav"><a href="/leadflow/">&larr; LeadFlow</a><a href="demo.html">Live demo</a><a href="studio.html">Free CSV repair</a><a href="index.html#pricing">Pricing</a><a href="docs.html">Docs</a><a class="lfnav-cta" href="index.html#pricing">Get all 4 workflows — $49</a></div>
-<div class="wrap">
+</style></head><body><div class="wrap">
 <span class="badge">runs offline</span><span class="badge">nothing uploaded</span><span class="badge">no account</span>
 <h1>Repair a broken CSV <span>without uploading it</span></h1>
 <p class="sub">Paste a broken export or pick a CSV: names that open as question marks, broken quotes, ragged rows, stray spaces and duplicate people are all handled, and you download a cleaned CSV you can import, the candidate email patterns in their own file, and a written reason for every row that was dropped or rewritten. Everything runs in this tab - your file is never uploaded and the page makes no network request.</p>
@@ -897,3 +888,257 @@ function lfPayUrl(amount, rows) {
   return 'https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=dragana.karans%40gmail.com' +
     '&item_name=' + encodeURIComponent(item) +
     '&amount=' + amount + '.00&currency_code=USD' +
+    '&return=' + encodeURIComponent('https://fejzadenis.github.io/leadflow/thanks.html') +
+    '&cancel_return=' + encodeURIComponent('https://fejzadenis.github.io/leadflow/studio.html');
+}
+
+// A buyer who pays on the studio page is returned from PayPal to thanks.html, and thanks.html sends
+// them back here with ?paid=1 so the file can be cleaned in the same tab instead of waiting for a
+// person. Pure and strict: only the exact pair counts, so nothing else in the query can flip it.
+function lfPaidMode(search) {
+  var q = String(search == null ? '' : search);
+  if (q.charAt(0) === '?') q = q.slice(1);
+  if (!q) return false;
+  return q.split('&').some(function (part) { return part === 'paid=1'; });
+}
+
+// A file the rules cannot read is not the visitor's failure - it is the one case where a person is
+// the product, so it is also the one case that must not dead-end. Pure on purpose (message, paid
+// flag in, HTML out) so the suite can assert what a stranger with a merged column actually reads.
+function lfDeadEndHtml(message, paid) {
+  var seen = String(message == null ? '' : message);
+  var subj = 'CSV repair - no email column found';
+  var body = 'The free cleaner read my file and said:\n' + seen + '\n\n' +
+    'What my file looks like: (everything in one column / two header rows / the address column is called something else)\n' +
+    'Rows: (roughly how many)\n' +
+    'The import tool is: (n8n / HubSpot / Pipedrive / Mailchimp / other)\n' +
+    'File: I will attach it after you reply\n';
+  var mail = '<a href="mailto:perun.intelligence@gmail.com?subject=' + encodeURIComponent(subj) +
+    '&body=' + encodeURIComponent(body) + '">email the file to a person</a>';
+  if (paid) {
+    return '<b>This file is not something a rule can decide, and it is covered by your payment.</b> ' + mail +
+      ' with the error your import shows - it is finished by hand within 24 hours, which is what you paid for. ' +
+      'Nothing is attached until you attach it yourself.';
+  }
+  return '<b>1. Free, and it often works:</b> name the address column <i>email</i> ' +
+    '(<i>Email - Work</i> and <i>Work Email</i> are accepted too), delete any title row above the header row, and press Run again.<br>' +
+    '<b>2. If the columns are merged, or the header row is wrong, a person has to do it:</b> ' + mail +
+    ' with the error your import shows. The first answer is free and names the price before you pay; ' +
+    'a one-file repair is flat by size - $49 up to 5,000 rows, $79 up to 25,000, $99 up to 100,000 - ' +
+    'back within 24 hours, 14-day refund if the delivered file does not match that. ' +
+    'Nothing is attached until you attach it yourself.';
+}
+
+var LF_OUT = null;
+// The raw bytes of the file the visitor picked, kept so the codepage guess can be overruled
+// without asking them to upload it again.
+var LF_LAST_SRC = null;
+
+
+function lfSave(name, text) {
+  // Excel on a European Windows reads a BOM-less UTF-8 CSV as its ANSI codepage,
+  // so a cleaned file would come back garbled when the buyer opens it. A CSV
+  // therefore leaves here UTF-8 WITH a BOM; the report stays plain UTF-8 text.
+  var file = lfFileBody(name, text);
+  var blob = new Blob([file.body], { type: file.mime });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+}
+
+function renderStudio() {
+  var box = document.getElementById('summary');
+  var rej = document.getElementById('rejected');
+  var result;
+  try {
+    result = lfRun(lfParseCsv(document.getElementById('csv').value));
+  } catch (err) {
+    box.innerHTML = '<span class="badge">' + esc(err.message) + '</span>';
+    rej.innerHTML = '';
+    LF_OUT = null;
+    ['d1', 'd2', 'd3'].forEach(function (id) { document.getElementById(id).disabled = true; });
+    // A file the rules cannot read is the one visitor the page used to give nothing to: the offer
+    // was hidden on the error path, so the person holding the worst file saw a red badge and left.
+    var askErr = document.getElementById('ask');
+    if (askErr) {
+      askErr.hidden = false;
+      askErr.innerHTML = lfDeadEndHtml(err.message, lfPaidMode(location.search));
+    }
+    return;
+  }
+  LF_OUT = result;
+  var s = result.summary;
+  box.innerHTML =
+    '<span class="stat"><b>' + s.leads_clean + '</b>clean leads</span>' +
+    (s.mojibake_repaired ? '<span class="stat"><b>' + s.mojibake_repaired + '</b>cell(s) of double-encoded text repaired' + (s.mojibake_gbk ? ' (' + s.mojibake_gbk + ' GB18030)' : '') + '</span>' : '') +
+    '<span class="stat"><b>' + result.rejected.length + '</b>rejected, each with a reason</span>' +
+    '<span class="stat"><b>' + s.patterns_generated + '</b>candidate patterns</span>' +
+    '<span class="stat"><b>' + s.drafts_written + '</b>drafts</span>' +
+    '<span class="stat"><b>0</b>emails sent</span>';
+
+  if (result.rejected.length) {
+    var h = '<table><tr><th>Row</th><th>Why it was rejected</th></tr>';
+    result.rejected.forEach(function (r) {
+      h += '<tr><td>' + esc(r.name || '(no name)') + '</td><td class="mono">' + esc(r.reason) + '</td></tr>';
+    });
+    h += '</table>';
+    rej.innerHTML = h;
+  } else {
+    rej.innerHTML = '<p class="hint">Nothing rejected.</p>';
+  }
+  ['d1', 'd2', 'd3'].forEach(function (id) { document.getElementById(id).disabled = false; });
+  var ask = document.getElementById('ask');
+  if (ask) {
+    var total = s.leads_clean + result.rejected.length;
+    var subject = 'My CSV still will not import: ' + total + ' rows, ' + result.rejected.length + ' dropped';
+    var body = 'The free cleaner read ' + total + ' rows, kept ' + s.leads_clean + ' and dropped ' + result.rejected.length + '.\n' +
+      'My import still says: (paste the exact error here)\n' +
+      'The import tool is: (n8n / HubSpot / Pipedrive / Mailchimp / other)\n' +
+      'File: I will attach it after you reply\n';
+    var tier = lfTierForRows(total);
+    var tierLine = tier
+      ? '<b>Your file: ' + total + ' rows &rarr; the ' + esc(tier.label) + ' repair covers it.</b> ' +
+        '<a href="' + lfPayUrl(tier.amount, total) + '" target="_blank" rel="noopener"><b>Pay ' + esc(tier.label) + ' and email this file</b></a>' +
+        ' &mdash; cleaned file plus the report back within 24 hours, 14-day refund.'
+      : '<b>Your file: ' + total + ' rows, past the 100,000-row tier</b> &mdash; mail the row count first and the answer names a price before you pay.';
+    // A buyer who already paid must not be sold the repair a second time, and the price sentence is
+    // the only place on this page that could do it. Same rule as the CTA above: the flag decides.
+    if (lfPaidMode(location.search)) {
+      ask.hidden = false;
+      ask.innerHTML = '<b>This run is covered by your payment.</b> Take the three files above now - they are the deliverable. ' +
+        'If your import still rejects this file after cleaning, <a href="mailto:perun.intelligence@gmail.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body) + '">send it to a person</a> ' +
+        'with the error your import shows and it is finished by hand within 24 hours, which is what you paid for. Nothing is attached until you attach it yourself.';
+      return;
+    }
+    ask.hidden = false;
+    ask.innerHTML = 'If your import still rejects this file after cleaning, that is the one job rules cannot decide. ' +
+      '<a href="mailto:perun.intelligence@gmail.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body) + '">Send it to a person</a> ' +
+      'with the error your import shows. The first answer is free; a repair is a flat price by size &mdash; $49 to 5,000 rows, $79 to 25,000, $99 to 100,000 &mdash; back within 24 hours. ' +
+      tierLine + ' Nothing is attached until you attach it yourself.' +
+      ' <b>Or stop cleaning it by hand:</b> this same run is what the four importable n8n workflows do on every new export, unattended &mdash; ' +
+      '<a href="./">the LeadFlow pack, $49 launch</a>, and the full guide, setup steps and troubleshooting page are published unedited, so you can read all of it before you pay.';
+  }
+}
+
+document.getElementById('run').addEventListener('click', renderStudio);
+document.getElementById('sample').addEventListener('click', function () {
+  document.getElementById('csv').value = SAMPLE;
+  renderStudio();
+});
+document.getElementById('d1').addEventListener('click', function () { if (LF_OUT) lfSave('leadflow-cleaned.csv', lfCleanedCsv(LF_OUT)); });
+document.getElementById('d2').addEventListener('click', function () { if (LF_OUT) lfSave('leadflow-patterns.csv', lfPatternsCsv(LF_OUT)); });
+document.getElementById('d3').addEventListener('click', function () { if (LF_OUT) lfSave('leadflow-report.md', lfReport(LF_OUT)); });
+
+// Paid mode is applied last, after every listener is bound, so a hiccup here can never leave the
+// tool dead: it only unhides the banner, hides the price card and rewrites the one email hint.
+if (lfPaidMode(location.search)) {
+  document.body.className = (document.body.className ? document.body.className + ' ' : '') + 'paid';
+  var _paidBan = document.getElementById('paidban');
+  if (_paidBan) _paidBan.hidden = false;
+  var _paidMail = document.getElementById('mailnow');
+  if (_paidMail) _paidMail.innerHTML = 'Or mail the export to <a href="mailto:perun.intelligence@gmail.com?subject=CSV%20repair">perun.intelligence@gmail.com</a> with the subject <b>CSV repair</b> - a person finishes it by hand within 24 hours.';
+}
+// Same bytes, the other codepage, results re-run. This is the only correct answer to the
+// 1250/1252 ambiguity: Excel picks one by Windows region and nothing in the file records which.
+function lfSwitchEncoding() {
+  var src = LF_LAST_SRC;
+  if (!src) return;
+  var to = lfOther8bit(src.encoding);
+  if (!to) return;
+  var decoded = lfDecodeAs(src.bytes, to);
+  LF_LAST_SRC = { bytes: src.bytes, name: src.name, encoding: to };
+  document.getElementById('csv').value = String(decoded.text || '').replace(/^\uFEFF/, '');
+  lfShowEncoding(decoded, src.name);
+  renderStudio();
+}
+
+function lfShowEncoding(decoded, fileName) {
+  var el = document.getElementById('enc');
+  if (!el) return;
+  if (!decoded) {
+    el.hidden = false;
+    el.innerHTML = '<b class="bad">Could not read ' + esc(fileName) + '.</b> Try saving it from Excel as CSV again, or paste the rows into the box.';
+    return;
+  }
+  var label = LF_ENC_WHY[decoded.encoding] || decoded.encoding;
+  if (decoded.encoding === 'utf-8') {
+    el.hidden = false;
+    el.innerHTML = 'Read <b>' + esc(fileName) + '</b> as UTF-8 &mdash; characters intact.';
+    return;
+  }
+  el.hidden = false;
+  el.innerHTML = 'Read <b>' + esc(fileName) + '</b> as <b>' + esc(label) + '</b>. ' +
+    'A tool that assumes UTF-8 would have turned those names into question marks; they are intact here. ' +
+    'The cleaned file downloads as UTF-8 with a BOM, so Excel opens it correctly too.';
+  var other = lfOther8bit(decoded.encoding);
+  if (other && LF_LAST_SRC) {
+    el.innerHTML += ' <br>Excel writes one of two 8-bit codepages depending on the Windows region, ' +
+      'and the file does not record which. If accented letters look foreign (a Polish \u0119 where a ' +
+      'French \u00EA belongs), re-read it as ' +
+      '<button type="button" id="encswitch" style="background:none;border:0;padding:0;font:inherit;' +
+      'color:#0a58ca;text-decoration:underline;cursor:pointer">' + esc(LF_ENC_SHORT[other] || other) +
+      '</button>.';
+    var sw = document.getElementById('encswitch');
+    if (sw) sw.addEventListener('click', function () { lfSwitchEncoding(); });
+  }
+}
+
+// One place that says "this file could not be read as a table", so the fallback advice is identical
+// whether the workbook is .xls, .ods, or an .xlsx whose first sheet would not unpack.
+function lfShowWorkbook(kind, fileName, why) {
+  LF_OUT = null;
+  document.getElementById('csv').value = '';
+  document.getElementById('summary').innerHTML = '<p class="hint">Nothing run: a workbook was picked, not a CSV.</p>';
+  document.getElementById('rejected').innerHTML = '';
+  ['d1', 'd2', 'd3'].forEach(function (id) { document.getElementById(id).disabled = true; });
+  var box = document.getElementById('enc');
+  if (box) {
+    box.hidden = false;
+    box.innerHTML = (why ? '<b class="bad">Could not read ' + esc(fileName) + ' (' + esc(why) + ').</b> ' : '') +
+      lfWorkbookMessage(kind, fileName);
+  }
+}
+
+document.getElementById('file').addEventListener('change', function (ev) {
+  var f = ev.target.files && ev.target.files[0];
+  if (!f) return;
+  var rd = new FileReader();
+  rd.onload = function () {
+    var bytes = new Uint8Array(rd.result);
+    var kind = lfSniffWorkbook(bytes, f.name);
+    if (kind === 'xlsx') {
+      lfXlsxToCsv(bytes, lfInflateRaw).then(function (res) {
+        if (!res || !res.csv) { lfShowWorkbook(kind, f.name, res && res.error); return; }
+        document.getElementById('csv').value = res.csv;
+        var box = document.getElementById('enc');
+        if (box) {
+          box.hidden = false;
+          box.innerHTML = 'Read <b>' + esc(res.rows) + ' rows</b> from worksheet <b>' + esc(res.sheet) +
+            '</b> of <b>' + esc(f.name) + '</b> &mdash; unzipped inside this tab, nothing uploaded. ' +
+            'The rows below are the cleaner\'s view of that sheet; the workbook itself never leaves your computer.';
+        }
+        renderStudio();
+      }).catch(function (err) { lfShowWorkbook(kind, f.name, err && err.message); });
+      return;
+    }
+    if (kind) { lfShowWorkbook(kind, f.name); return; }
+    var decoded = lfDecodeBytes(bytes);
+    var text = String(decoded.text || '').replace(/^\uFEFF/, '');
+    document.getElementById('csv').value = text;
+    LF_LAST_SRC = { bytes: bytes, name: f.name, encoding: decoded.encoding };
+    lfShowEncoding(decoded, f.name);
+    renderStudio();
+  };
+  rd.onerror = function () { lfShowEncoding(null, f.name); };
+  rd.readAsArrayBuffer(f);
+});
+document.getElementById('csv').value = SAMPLE;
+renderStudio();
+/*</STUDIO>*/
+</script>
+</body></html>
