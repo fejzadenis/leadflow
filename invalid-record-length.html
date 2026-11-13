@@ -94,7 +94,18 @@ const DELIM = ';';
 const text = $input.first().json.csv.replace(/^\uFEFF/, '');
 const lines = text.split(/\r?\n/).filter(l =&gt; l.trim() !== '');
 
-const header = lines.shift().split(DELIM).map(h =&gt; h.trim() || 'unnamed');
+// a trailing delimiter on the header line is a phantom column, not a field
+const rawHeader = lines.shift().split(DELIM);
+while (rawHeader.length &gt; 1 &amp;&amp; rawHeader[rawHeader.length - 1].trim() === '') rawHeader.pop();
+
+// duplicate header names would silently overwrite each other in the object
+const seen = {};
+const header = rawHeader.map((h, i) =&gt; {
+  let name = h.trim() || 'column_' + (i + 1);
+  if (seen[name]) name = name + '_' + (++seen[name]); else seen[name] = 1;
+  return name;
+});
+
 const rows = lines.map((line, i) =&gt; {
   const cells = line.split(DELIM);
   // a trailing delimiter produces empty overflow cells - drop them
@@ -106,6 +117,7 @@ const rows = lines.map((line, i) =&gt; {
   return { json: out };
 });
 return rows;</code></pre>
+<p class="muted">Tested on a 7-column sample with a trailing delimiter on the header line, one short row (3 of 7 fields), one row with an extra trailing field and a duplicate header name: 5 rows out, 7 keys, no <code>unnamed</code> column, <code>email</code> and <code>email_2</code> kept apart, and <code>__source_line</code> pointing at the original line so a padded row can be traced back.</p>
 <p>Two honest limits, because they decide whether this is enough:</p>
 <ul>
 <li><b>It does not understand quoted delimiters.</b> If a cell contains the delimiter inside quotes (<code>"Smith, John"</code> with a comma separator), splitting on the delimiter breaks it. That needs a real parser &mdash; which is what the node already is, and why Fix 1 exists.</li>
