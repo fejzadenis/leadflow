@@ -2,8 +2,9 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Meta Conversions API 400 error after two days — diagnosis and fix</title>
-<meta name="description" content="Why Meta Conversions API events start returning 400 after working for a couple of days: expired tokens, test_event_code left live, event_time format, missing action_source. With the fix for each.">
+<meta name="description" content="Meta Conversions API 400 after a couple of good days: expired token, live test_event_code, event_time units, missing action_source - with the fix for each.">
 <style>body{font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif;max-width:760px;margin:48px auto;padding:0 20px;color:#111}h1{font-size:1.7rem;line-height:1.25}h2{margin-top:2rem;font-size:1.15rem}table{border-collapse:collapse;width:100%;font-size:.93rem}td,th{border:1px solid #ddd;padding:8px;vertical-align:top}code{background:#f4f4f4;padding:1px 4px;border-radius:3px}.cta{margin-top:2.5rem;padding:18px;border-left:4px solid #111;background:#fafafa}</style>
+<link rel="canonical" href="https://fejzadenis.github.io/leadflow/capi-400.html">
 </head><body>
 <h1>Meta Conversions API returns 400 after working for two days</h1>
 <p>If your server-side events fire correctly for a day or two and then start failing with HTTP 400, the payload shape is almost never the problem. Something that <em>changes on a timer</em> is.</p>
