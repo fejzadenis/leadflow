@@ -530,16 +530,61 @@ function esc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+function lfPaidMode(search) {
+  var q = String(search == null ? '' : search);
+  if (q.charAt(0) === '?') q = q.slice(1);
+  if (!q) return false;
+  return q.split('&').some(function (part) { return part === 'paid=1'; });
+}
+
+// The demo takes pasted text, so a file it cannot read has no download to offer - the only
+// useful thing left is a person. Pure (message, paid flag in, HTML out) so the suite can assert
+// what a stranger with a merged column actually reads.
+function lfDeadEndHtml(message, paid) {
+  var seen = String(message == null ? '' : message);
+  var subj = 'CSV repair - the demo could not read my columns';
+  var body = 'The demo on your site read my lead list and said:\n' + seen + '\n\n' +
+    'My header row is: (paste the first line of the file)\n' +
+    'Rows: (roughly how many)\n' +
+    'The import tool is: (n8n / HubSpot / Pipedrive / Mailchimp / other)\n' +
+    'File: I will attach the CSV after you reply\n';
+  var mail = '<a href="mailto:perun.intelligence@gmail.com?subject=' + encodeURIComponent(subj) +
+    '&body=' + encodeURIComponent(body) + '">email the header row to a person</a>';
+  if (paid) {
+    return '<div class="hint" style="margin-top:10px">' +
+      '<b>This file is not something a rule can decide, and it is covered by your payment.</b> ' + mail +
+      ' with the error your import shows - it is finished by hand within 24 hours, which is what you paid for. ' +
+      'Nothing is attached until you attach it yourself.</div>';
+  }
+  return '<div class="hint" style="margin-top:10px">' +
+    '<b>1. Free, and it is usually this:</b> name the address column <i>email</i> ' +
+    '(<i>Email - Work</i> and <i>Work Email</i> are accepted too), delete any title row above the header row, and press the button again. ' +
+    'Everything in one column, or two header rows, cannot be split by any rule.<br>' +
+    '<b>2. If the columns are merged, or there is no header row at all:</b> ' + mail +
+    ' with the first line of your file. The first answer is free and names the price before you pay; ' +
+    'a one-file repair is flat by size - $49 up to 5,000 rows, $79 up to 25,000, $99 up to 100,000 - ' +
+    'back within 24 hours, 14-day refund if the delivered file does not match that. ' +
+    'Nothing is attached until you attach it yourself.<br>' +
+    '<b>3. If you would rather hand over the actual file:</b> the <a href="./studio.html">cleaner that takes a file</a> ' +
+    'reads .csv, .tsv and .xlsx and repairs Windows-1250 / GB18030 text - same engine as this page.</div>';
+}
+
 function render() {
   var result;
   try {
     result = lfRun(lfParseCsv(document.getElementById('csv').value));
   } catch (err) {
-    document.getElementById('summary').innerHTML = '<span class="badge">' + esc(err.message) + '</span>';
-    document.getElementById('leads').innerHTML = '';
-    document.getElementById('rejected').innerHTML = '';
-    document.getElementById('patterns').innerHTML = '';
-    document.getElementById('draft').textContent = '';
+    // A pasted file the rules cannot read is the one visitor the page used to give nothing to:
+    // the old branch printed a red badge, blanked every panel and stopped. That person is the
+    // likeliest buyer of a repair, so this branch now names the cause, the free fix, the price
+    // and the address - and it never claims a price to someone who already paid.
+    document.getElementById('summary').innerHTML =
+      '<span class="badge">' + esc(err.message) + '</span>' +
+      lfDeadEndHtml(err.message, lfPaidMode(location.search));
+    document.getElementById('leads').innerHTML = '<p class="hint">No rows to show until the header row is recognised.</p>';
+    document.getElementById('rejected').innerHTML = '<p class="hint">Nothing was read, so nothing was rejected.</p>';
+    document.getElementById('patterns').innerHTML = '<p class="hint">Nothing to generate.</p>';
+    document.getElementById('draft').textContent = 'No leads, so no draft.';
     return;
   }
   var s = result.summary;
