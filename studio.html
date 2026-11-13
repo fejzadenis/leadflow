@@ -108,7 +108,7 @@ a{color:#8fb7ff}
   <p class="hint"><b>Is this CSV repair free?</b> Yes - it runs in the tab with no account and no sign-up. The $49 offers are different things: one export fixed by a person (up to 5,000 rows, 24h, a report), or the n8n pack that does this inside your own automation with Sheets logging.</p>
   <p class="hint"><b>Does it upload my list anywhere?</b> No. There is no fetch, no XHR, no storage - the file is read in this tab and disappears when you close it.</p>
   <p class="hint"><b>Does it remove duplicate emails?</b> Yes, by email identity: <i>Marko.Petrovic@Acme.com</i> and <i>marko.petrovic@acme.com</i> are one person, and the row with more filled fields is the one kept. The report states how many rows were merged.</p>
-  <p class="hint"><b>Why does my Excel CSV open with question marks or broken letters?</b> The file was saved in a legacy encoding (Windows-1250 on a Serbian/Polish/Czech Windows, Windows-1252 in the West) and was then read as UTF-8. This page decodes the bytes by their real encoding instead of guessing, names the encoding it used, and downloads the cleaned CSV with a BOM so Excel reopens it with the names intact.</p>
+  <p class="hint"><b>Why does my Excel CSV open with question marks or broken letters?</b> The file was saved in a legacy encoding (Windows-1250 on a Serbian/Polish/Czech Windows, Windows-1252 in the West) and was then read as UTF-8. This page decodes the bytes by their real encoding instead of guessing, names the encoding it used, and downloads the cleaned CSV with a BOM so Excel reopens it with the names intact. It also reverses the damage in the other direction - text some tool read as <b>GB18030</b> (the default on a Chinese Windows, and the bug in n8n's HTTP Request node), where <i>&eacute;</i> is stored as a CJK character - because those bytes are still in the cell too.</p>
   <p class="hint"><b>Which exports does it read?</b> Comma, semicolon and tab separated, including a straight paste from Excel or Google Sheets; Pipedrive <i>Email - Work</i>, HubSpot <i>Work Email</i> and Mailchimp <i>Email 1</i> headers are recognised.</p>
   <p class="hint"><b>Does it tell me which addresses will bounce?</b> No - it cleans, it does not verify. Guessed patterns are candidates you confirm before sending, and every rejected row is listed with the rule that rejected it rather than being dropped silently.</p>
 </div>
@@ -334,28 +334,94 @@ function lfMojibake(s) {
   return out;
 }
 
+// 2026-11-13 (second path) - the same damage one layer down, from a different culprit. n8n's HTTP
+// Request node re-decodes a valid UTF-8 body as GB18030 (n8n issue #43713, still open), so
+// "Decision" with an accented e is stored as "D" + U+8305 + "cision": the bytes C3 A9 were read as a
+// single GBK character. That character is above U+00FF, so the Windows-1252 repair below cannot see
+// it - the tool repaired 0 of those cells. The inverse is exact for the same reason it is exact
+// above: a 2-byte UTF-8 sequence is one of 30 lead bytes by 64 continuations, so a small reverse
+// table (built once, from the browser's own GB18030 decoder) maps each damaged character back to the
+// two bytes that produced it. A wrong repair is worse than the damage, so a cell is only touched when
+// the rebuilt bytes are strict UTF-8 AND the result is Latin/Greek/Cyrillic text - a genuine Chinese
+// cell must never be "repaired" into nonsense.
+var LF_GBK_REV = null;
+function lfGbkTable() {
+  if (LF_GBK_REV !== null) return LF_GBK_REV;
+  var map = {}, repl = String.fromCharCode(0xFFFD);
+  try {
+    var dec = new TextDecoder('gb18030');
+    for (var b1 = 0xC2; b1 <= 0xDF; b1++) {            // lead bytes of 2-byte UTF-8 only
+      for (var b2 = 0x80; b2 <= 0xBF; b2++) {          // its continuation bytes
+        var s = dec.decode(new Uint8Array([b1, b2]));
+        if (s.length === 1 && s !== repl && map[s] == null) map[s] = (b1 << 8) | b2;
+      }
+    }
+  } catch (e) {
+    map = {};                                          // no GB18030 decoder here - no repair, no crash
+  }
+  LF_GBK_REV = map;
+  return map;
+}
+
+function lfGbkMojibake(s) {
+  var t = String(s == null ? '' : s);
+  if (!t) return null;
+  var map = lfGbkTable(), bytes = [], hit = 0;
+  for (var i = 0; i < t.length; i++) {
+    var c = t.charCodeAt(i);
+    if (c < 0x80) { bytes.push(c); continue; }
+    var pair = map[t.charAt(i)];
+    if (pair == null) return null;                     // not a pure GBK double-decode
+    bytes.push(pair >> 8, pair & 0xFF);
+    hit++;
+  }
+  if (!hit) return null;
+  var out;
+  try { out = new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes)); }
+  catch (e) { return null; }
+  if (!out || out === t || out.indexOf(String.fromCharCode(0xFFFD)) >= 0) return null;
+  var accented = false;
+  for (var j = 0; j < out.length; j++) {
+    var oc = out.charCodeAt(j);
+    if ((oc >= 0x00C0 && oc <= 0x024F) || (oc >= 0x0370 && oc <= 0x04FF)) { accented = true; break; }
+  }
+  if (!accented) return null;
+  return out;
+}
+
+// One call site for both decode families. Windows-1252 goes first: it is the more common damage and
+// it cannot fire when a character above U+00FF is present, so the two can never overlap.
+function lfRepairCell(v) {
+  var a = lfMojibake(v);
+  if (a != null) return { text: a, kind: 'cp1252' };
+  var b = lfGbkMojibake(v);
+  if (b != null) return { text: b, kind: 'gb18030' };
+  return null;
+}
+
 // Repairs every cell of every row and keeps a count plus a few before/after samples, so the report
 // can show the visitor what was changed instead of asserting that something was.
 function lfRepairRows(rows) {
-  var fixed = 0, samples = [];
+  var fixed = 0, gbk = 0, samples = [];
   var out = [];
   for (var i = 0; i < rows.length; i++) {
     var src = rows[i] || {}, row = {}, keys = Object.keys(src);
     for (var k = 0; k < keys.length; k++) {
       var key = keys[k], val = src[key];
       if (typeof val === 'string') {
-        var rep = lfMojibake(val);
+        var rep = lfRepairCell(val);
         if (rep != null) {
-          if (samples.length < 3) samples.push({ field: key, before: val, after: rep });
+          if (samples.length < 3) samples.push({ field: key, before: val, after: rep.text, kind: rep.kind });
           fixed++;
-          val = rep;
+          if (rep.kind === 'gb18030') gbk++;
+          val = rep.text;
         }
       }
       row[key] = val;
     }
     out.push(row);
   }
-  return { rows: out, repaired: fixed, samples: samples };
+  return { rows: out, repaired: fixed, gbk: gbk, samples: samples };
 }
 
 function lfClean(rows) {
@@ -456,6 +522,7 @@ function lfRun(rows) {
       credentials_used: 'none',
       network_calls_made: 0,
       mojibake_repaired: repaired.repaired,
+      mojibake_gbk: repaired.gbk || 0,
       leads_clean: drafted.length,
       patterns_generated: patterns,
       drafts_written: drafted.length,
@@ -516,7 +583,8 @@ function lfReport(result) {
     'Rows in: ' + (result.leads.length + result.rejected.length),
     'Clean leads: ' + s.leads_clean,
     'Rejected (with reason): ' + result.rejected.length,
-    'Double-encoded text repaired (cells): ' + (s.mojibake_repaired || 0),
+    'Double-encoded text repaired (cells): ' + (s.mojibake_repaired || 0) +
+      (s.mojibake_gbk ? ' (' + s.mojibake_gbk + ' of them UTF-8 read as GB18030)' : ''),
     'Candidate patterns: ' + s.patterns_generated,
     'Drafts written: ' + s.drafts_written,
     'Emails sent: 0',
@@ -527,8 +595,10 @@ function lfReport(result) {
   ];
   if (result.repaired && result.repaired.length) {
     lines.push('', '## Repaired double-encoded text', '',
-      'These cells arrived as UTF-8 read through Windows-1252 ("Pe\u00c3\u00b1a"); the original bytes were still there, so the repair is exact, not a transliteration.');
-    result.repaired.forEach(function (r) { lines.push('- ' + r.field + ': ' + r.before + ' -> ' + r.after); });
+      'These cells arrived as UTF-8 that another program decoded as Windows-1252 ("Pe\u00c3\u00b1a") or as GB18030 ("D\u8305cision"); the original bytes were still in the cell, so the repair is exact, not a transliteration.');
+    result.repaired.forEach(function (r) {
+      lines.push('- ' + r.field + ' (' + (r.kind === 'gb18030' ? 'GB18030' : 'Windows-1252') + '): ' + r.before + ' -> ' + r.after);
+    });
   }
   if (!result.rejected.length) lines.push('None - every row was usable.');
   result.rejected.forEach(function (r) { lines.push('- ' + (r.name || '(no name)') + ': ' + r.reason); });
@@ -851,7 +921,7 @@ function renderStudio() {
   var s = result.summary;
   box.innerHTML =
     '<span class="stat"><b>' + s.leads_clean + '</b>clean leads</span>' +
-    (s.mojibake_repaired ? '<span class="stat"><b>' + s.mojibake_repaired + '</b>cell(s) of double-encoded text repaired</span>' : '') +
+    (s.mojibake_repaired ? '<span class="stat"><b>' + s.mojibake_repaired + '</b>cell(s) of double-encoded text repaired' + (s.mojibake_gbk ? ' (' + s.mojibake_gbk + ' GB18030)' : '') + '</span>' : '') +
     '<span class="stat"><b>' + result.rejected.length + '</b>rejected, each with a reason</span>' +
     '<span class="stat"><b>' + s.patterns_generated + '</b>candidate patterns</span>' +
     '<span class="stat"><b>' + s.drafts_written + '</b>drafts</span>' +

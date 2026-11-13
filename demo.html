@@ -318,28 +318,94 @@ function lfMojibake(s) {
   return out;
 }
 
+// 2026-11-13 (second path) - the same damage one layer down, from a different culprit. n8n's HTTP
+// Request node re-decodes a valid UTF-8 body as GB18030 (n8n issue #43713, still open), so
+// "Decision" with an accented e is stored as "D" + U+8305 + "cision": the bytes C3 A9 were read as a
+// single GBK character. That character is above U+00FF, so the Windows-1252 repair below cannot see
+// it - the tool repaired 0 of those cells. The inverse is exact for the same reason it is exact
+// above: a 2-byte UTF-8 sequence is one of 30 lead bytes by 64 continuations, so a small reverse
+// table (built once, from the browser's own GB18030 decoder) maps each damaged character back to the
+// two bytes that produced it. A wrong repair is worse than the damage, so a cell is only touched when
+// the rebuilt bytes are strict UTF-8 AND the result is Latin/Greek/Cyrillic text - a genuine Chinese
+// cell must never be "repaired" into nonsense.
+var LF_GBK_REV = null;
+function lfGbkTable() {
+  if (LF_GBK_REV !== null) return LF_GBK_REV;
+  var map = {}, repl = String.fromCharCode(0xFFFD);
+  try {
+    var dec = new TextDecoder('gb18030');
+    for (var b1 = 0xC2; b1 <= 0xDF; b1++) {            // lead bytes of 2-byte UTF-8 only
+      for (var b2 = 0x80; b2 <= 0xBF; b2++) {          // its continuation bytes
+        var s = dec.decode(new Uint8Array([b1, b2]));
+        if (s.length === 1 && s !== repl && map[s] == null) map[s] = (b1 << 8) | b2;
+      }
+    }
+  } catch (e) {
+    map = {};                                          // no GB18030 decoder here - no repair, no crash
+  }
+  LF_GBK_REV = map;
+  return map;
+}
+
+function lfGbkMojibake(s) {
+  var t = String(s == null ? '' : s);
+  if (!t) return null;
+  var map = lfGbkTable(), bytes = [], hit = 0;
+  for (var i = 0; i < t.length; i++) {
+    var c = t.charCodeAt(i);
+    if (c < 0x80) { bytes.push(c); continue; }
+    var pair = map[t.charAt(i)];
+    if (pair == null) return null;                     // not a pure GBK double-decode
+    bytes.push(pair >> 8, pair & 0xFF);
+    hit++;
+  }
+  if (!hit) return null;
+  var out;
+  try { out = new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes)); }
+  catch (e) { return null; }
+  if (!out || out === t || out.indexOf(String.fromCharCode(0xFFFD)) >= 0) return null;
+  var accented = false;
+  for (var j = 0; j < out.length; j++) {
+    var oc = out.charCodeAt(j);
+    if ((oc >= 0x00C0 && oc <= 0x024F) || (oc >= 0x0370 && oc <= 0x04FF)) { accented = true; break; }
+  }
+  if (!accented) return null;
+  return out;
+}
+
+// One call site for both decode families. Windows-1252 goes first: it is the more common damage and
+// it cannot fire when a character above U+00FF is present, so the two can never overlap.
+function lfRepairCell(v) {
+  var a = lfMojibake(v);
+  if (a != null) return { text: a, kind: 'cp1252' };
+  var b = lfGbkMojibake(v);
+  if (b != null) return { text: b, kind: 'gb18030' };
+  return null;
+}
+
 // Repairs every cell of every row and keeps a count plus a few before/after samples, so the report
 // can show the visitor what was changed instead of asserting that something was.
 function lfRepairRows(rows) {
-  var fixed = 0, samples = [];
+  var fixed = 0, gbk = 0, samples = [];
   var out = [];
   for (var i = 0; i < rows.length; i++) {
     var src = rows[i] || {}, row = {}, keys = Object.keys(src);
     for (var k = 0; k < keys.length; k++) {
       var key = keys[k], val = src[key];
       if (typeof val === 'string') {
-        var rep = lfMojibake(val);
+        var rep = lfRepairCell(val);
         if (rep != null) {
-          if (samples.length < 3) samples.push({ field: key, before: val, after: rep });
+          if (samples.length < 3) samples.push({ field: key, before: val, after: rep.text, kind: rep.kind });
           fixed++;
-          val = rep;
+          if (rep.kind === 'gb18030') gbk++;
+          val = rep.text;
         }
       }
       row[key] = val;
     }
     out.push(row);
   }
-  return { rows: out, repaired: fixed, samples: samples };
+  return { rows: out, repaired: fixed, gbk: gbk, samples: samples };
 }
 
 function lfClean(rows) {
@@ -440,6 +506,7 @@ function lfRun(rows) {
       credentials_used: 'none',
       network_calls_made: 0,
       mojibake_repaired: repaired.repaired,
+      mojibake_gbk: repaired.gbk || 0,
       leads_clean: drafted.length,
       patterns_generated: patterns,
       drafts_written: drafted.length,
@@ -479,7 +546,7 @@ function render() {
   document.getElementById('summary').innerHTML =
     '<span class="badge">ran locally</span>' +
     '<div class="stat"><b>' + s.leads_clean + '</b>clean leads</div>' +
-    (s.mojibake_repaired ? '<div class="stat"><b>' + s.mojibake_repaired + '</b>cells repaired from double-encoding</div>' : '') +
+    (s.mojibake_repaired ? '<div class="stat"><b>' + s.mojibake_repaired + '</b>cells repaired from double-encoding' + (s.mojibake_gbk ? ' (' + s.mojibake_gbk + ' as GB18030)' : '') + '</div>' : '') +
     '<div class="stat"><b>' + result.rejected.length + '</b>rejected (with reasons)</div>' +
     '<div class="stat"><b>' + s.patterns_generated + '</b>patterns</div>' +
     '<div class="stat"><b>' + s.drafts_written + '</b>drafts</div>' +
