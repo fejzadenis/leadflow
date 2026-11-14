@@ -1,9 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>White-label n8n builds — $450 fixed, tested before you pay</title>
+<title>White-label n8n builds â€” $450 fixed, tested before you pay</title>
 <meta name="description" content="Fixed-price n8n workflow builds for agencies: $450 per workflow, 72 hours from spec to importable JSON, paid after the tests pass on your data. Your client, your margin, my name never appears.">
 <style>
   :root{--ink:#14161a;--mut:#5b6470;--line:#e3e7ec;--bg:#fbfcfd;--acc:#0b6b53;--acc2:#eaf6f1;}
@@ -43,12 +43,20 @@
 </div>
 
 <div class="box">
-  <div class="price"><b>$450</b><span class="mut">per workflow, fixed — no hourly, no change-order theatre</span></div>
-  <p style="margin-bottom:16px">72 hours from a written spec to an importable JSON file, with a test harness that replays the failures that break automations in production — retried jobs double-counting, duplicate webhooks, a missing day, DST. You get pass/fail per scenario, not an assurance.</p>
-  <p style="margin-bottom:16px"><strong>Paying:</strong> after the tests pass on your data, I invoice you — or pay now and the build starts today.</p>
+  <div class="price"><b>$450</b><span class="mut">per workflow, fixed â€” no hourly, no change-order theatre</span></div>
+  <p style="margin-bottom:16px">72 hours from a written spec to an importable JSON file, with a test harness that replays the failures that break automations in production â€” retried jobs double-counting, duplicate webhooks, a missing day, DST. You get pass/fail per scenario, not an assurance.</p>
+  <p style="margin-bottom:16px"><strong>Paying:</strong> after the tests pass on your data, I invoice you â€” or pay now and the build starts today.</p>
   <a class="cta" href="https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&amp;business=dragana.karans%40gmail.com&amp;item_name=n8n%20workflow%20build%20-%20fixed%20price&amp;amount=450.00&amp;currency_code=USD&amp;return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fbuild.html%3Fpaid%3D1&amp;cancel_return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fbuild.html">Pay $450 and start now</a>
   <a class="cta alt" style="margin-left:10px" href="mailto:perun.intelligence@gmail.com?subject=n8n%20build%20-%20spec%20for%20a%20quote&amp;body=What%20it%20has%20to%20do%3A%0AWhich%20systems%20it%20touches%3A%0ADeadline%3A%0A">Send a spec, get a same-day quote</a>
   <p class="mut" style="font-size:14px;margin:14px 0 0">Card or PayPal balance. 14 days to change your mind, no explanation needed.</p>
+</div>
+
+<div class="box" id="fix">
+  <div class="price"><b>$99</b><span class="mut">the workflow is already yours &mdash; you want it fixed and explained</span></div>
+  <p style="margin-bottom:16px">Send the JSON. You get the audit of what is actually wrong, the corrected workflow, and a 30-minute walkthrough so you can maintain it yourself. Nothing is kept back: the file you receive is the file that runs in production. This is the option for the two buyers who say <em>teach us, do not build it for us</em>.</p>
+  <a class="cta" href="https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&amp;business=dragana.karans%40gmail.com&amp;item_name=n8n%20workflow%20audit%20and%20fix%20walkthrough&amp;amount=99.00&amp;currency_code=USD&amp;return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fbuild.html%3Fpaid%3D1&amp;cancel_return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fbuild.html">Pay $99, send the workflow</a>
+  <a class="cta alt" style="margin-left:10px" href="https://fejzadenis.github.io/leadflow/audit.html">Run the free audit first</a>
+  <p class="mut" style="font-size:14px;margin:14px 0 0">Same 14-day refund. If the audit finds nothing wrong, you get the $99 back and a written note saying so.</p>
 </div>
 
 <p>Hiring for a single workflow rather than an agency handover? <a href="https://fejzadenis.github.io/leadflow/hire-n8n-developer.html">The same offer, explained for a direct buyer</a>.</p>
@@ -59,24 +67,24 @@
 <table>
   <tr><th>Build</th><th>What it proves</th><th>Look</th></tr>
   <tr>
-    <td>HVAC runtime-hour reminders (Ecobee → rebate prompt)</td>
+    <td>HVAC runtime-hour reminders (Ecobee â†’ rebate prompt)</td>
     <td>One row per customer per day so a retry rewrites the day instead of adding to it; idempotent reset webhook; rebate gated on zip and equipment age. <strong>16 of 16 scenarios pass in a real n8n instance.</strong></td>
     <td><a href="https://gist.github.com/fejzadenis/a98a8f3739cfe6d2e271f95e1906a9b4">gist + execution output</a></td>
   </tr>
   <tr>
     <td>Content approval gate (a post cannot publish without approval for its current revision)</td>
     <td>Revision-keyed approvals, stale links refused as <code>stale_link</code>, idempotent decisions, one 48h chase, a publish gate that refuses. <strong>20 of 20 scenarios pass.</strong></td>
-    <td><a href="https://fejzadenis.github.io/content-approval-gate/">live clickable demo</a> · <a href="https://gist.github.com/fejzadenis/eeba1748b3d9b2467f3a6c6f1a009d27">gist</a></td>
+    <td><a href="https://fejzadenis.github.io/content-approval-gate/">live clickable demo</a> Â· <a href="https://gist.github.com/fejzadenis/eeba1748b3d9b2467f3a6c6f1a009d27">gist</a></td>
   </tr>
 </table>
 
 <h2>Check a workflow before you send it to anyone</h2>
-<p>There is a free audit tool on this site: paste a workflow JSON and ten mechanical checks run in the browser — an open webhook, a credential sitting in a node field, an HTTP call with no retry, writes with no de-duplication, an expression pointing at a node that was renamed. Nothing is uploaded and there is no account. <a href="https://fejzadenis.github.io/leadflow/audit.html">Run the audit</a>.</p>
+<p>There is a free audit tool on this site: paste a workflow JSON and ten mechanical checks run in the browser â€” an open webhook, a credential sitting in a node field, an HTTP call with no retry, writes with no de-duplication, an expression pointing at a node that was renamed. Nothing is uploaded and there is no account. <a href="https://fejzadenis.github.io/leadflow/audit.html">Run the audit</a>.</p>
 
 <h2>The terms, in full</h2>
 <ul>
   <li><strong>$450 per workflow</strong>, fixed, quoted from your written spec. Multi-workflow jobs are quoted as a list, each line its own price.</li>
-  <li><strong>72 hours</strong> from spec to JSON, or the price drops — say the deadline up front and I will tell you honestly whether I can hit it before you commit.</li>
+  <li><strong>72 hours</strong> from spec to JSON, or the price drops â€” say the deadline up front and I will tell you honestly whether I can hit it before you commit.</li>
   <li><strong>Paid after the tests pass</strong>, or up front if you want the build to start today. Same deliverable either way.</li>
   <li><strong>Your client stays yours.</strong> I do not contact them, I do not put my name on the handover, and I sign an NDA if you have one.</li>
   <li><strong>If the first test run fails on your data</strong>, you pay nothing and you keep the JSON to do what you like with it.</li>
@@ -84,10 +92,10 @@
 </ul>
 
 <h2>Why the price is this low</h2>
-<p>No agency overhead, no account manager, no discovery workshop. You write what it must do; I build it, test it and send the JSON. If it needs a call, we have one — but the deliverable is a file that runs, not a deck.</p>
+<p>No agency overhead, no account manager, no discovery workshop. You write what it must do; I build it, test it and send the JSON. If it needs a call, we have one â€” but the deliverable is a file that runs, not a deck.</p>
 
 <footer>
-  Denis Fejza — independent n8n builder · <a href="mailto:perun.intelligence@gmail.com">perun.intelligence@gmail.com</a> · answers within a day, usually within the hour<br>
+  Denis Fejza â€” independent n8n builder Â· <a href="mailto:perun.intelligence@gmail.com">perun.intelligence@gmail.com</a> Â· answers within a day, usually within the hour<br>
   Payments go to a PayPal business account, shown as <code>dragana.karans@gmail.com</code> on the statement. That is this business.
 </footer>
 
