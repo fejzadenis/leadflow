@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Free n8n workflow audit — 10 mechanical checks, in your browser</title>
+<meta name="description" content="Paste an n8n workflow JSON and get a rule-by-rule report in your browser: open webhooks, secrets in nodes, missing retries, no error workflow, duplicate writes, broken expressions. Nothing is uploaded.">
+<meta property="og:title" content="Free n8n workflow audit — runs in your browser, nothing is uploaded">
+<meta property="og:description" content="Ten mechanical checks on the JSON you paste: unauthenticated webhooks, credentials in parameters, missing retries, no error workflow, writes with no de-duplication, expressions pointing at nodes that no longer exist.">
+<meta property="og:type" content="website">
+<style>
+  :root{--ink:#14161a;--mut:#5b6470;--line:#e3e7ec;--bg:#fbfcfd;--acc:#0b6b53;--acc2:#eaf6f1;
+        --high:#a4231b;--highbg:#fdeceb;--med:#8a5a00;--medbg:#fdf4e3;--low:#41506b;--lowbg:#eef2f8;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.62 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:40px 22px 70px}
+  h1{font-size:33px;line-height:1.18;margin:0 0 14px;letter-spacing:-.01em}
+  h2{font-size:20px;margin:34px 0 10px}
+  p{margin:0 0 14px}
+  .lede{font-size:19px;color:#2b323b}
+  .mut{color:var(--mut)}
+  .box{border:1px solid var(--line);background:#fff;border-radius:12px;padding:20px 22px;margin:22px 0}
+  .cta{display:inline-block;background:var(--acc);color:#fff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:10px}
+  .cta.alt{background:#fff;color:var(--acc);border:2px solid var(--acc)}
+  ul{margin:0 0 14px 20px;padding:0}
+  li{margin:0 0 7px}
+  code{background:#eef1f5;padding:2px 6px;border-radius:5px;font-size:15px}
+  a{color:var(--acc)}
+  textarea{width:100%;min-height:150px;border:1px solid var(--line);border-radius:10px;padding:12px;
+           font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;resize:vertical;background:#fff}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0 0}
+  button{font:700 15px/1 -apple-system,Segoe UI,Roboto,sans-serif;padding:13px 20px;border-radius:10px;border:0;
+         background:var(--acc);color:#fff;cursor:pointer}
+  button.ghost{background:#fff;color:var(--acc);border:2px solid var(--acc)}
+  button:disabled{opacity:.55;cursor:default}
+  .err{background:var(--highbg);border:1px solid #f0c3bf;color:#7d1a14;border-radius:10px;padding:12px 14px;margin:14px 0;display:none}
+  .summary{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0 6px}
+  .pill{border-radius:999px;padding:7px 14px;font-size:14px;font-weight:700;border:1px solid transparent}
+  .pill.high{background:var(--highbg);color:var(--high);border-color:#f0c3bf}
+  .pill.medium{background:var(--medbg);color:var(--med);border-color:#eed9ae}
+  .pill.low{background:var(--lowbg);color:var(--low);border-color:#d5deec}
+  .pill.ok{background:var(--acc2);color:var(--acc);border-color:#bfe3d5}
+  .finding{border:1px solid var(--line);border-left-width:5px;border-radius:8px;padding:12px 14px;margin:10px 0;background:#fff}
+  .finding.high{border-left-color:var(--high)}
+  .finding.medium{border-left-color:#c98a12}
+  .finding.low{border-left-color:#7f93b3}
+  .finding b{display:block;margin-bottom:3px}
+  .finding .node{font:12px/1.4 ui-monospace,Consolas,monospace;color:var(--mut);text-transform:none}
+  table{width:100%;border-collapse:collapse;margin:8px 0 16px;font-size:16px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+  footer{margin-top:44px;border-top:1px solid var(--line);padding-top:16px;font-size:14px;color:var(--mut)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Audit an n8n workflow before it fails in production.</h1>
+
+<p class="lede">Paste the workflow JSON. Ten mechanical checks run in this page — no upload, no account, no server. Every finding names the node and the exact field, so you can check it yourself.</p>
+
+<p class="mut">This is the same first pass I run when an agency hands me a workflow that "mostly works". It reads the JSON, not your business rules.</p>
+
+<div class="box">
+  <h2 style="margin-top:0">1. Paste the JSON</h2>
+  <textarea id="json" spellcheck="false" placeholder='Paste one workflow: {"name": "...", "nodes": [...], "connections": {...}}'></textarea>
+  <div class="row">
+    <input type="file" id="file" accept=".json,application/json" style="font-size:15px">
+    <button id="run">Audit it</button>
+    <button class="ghost" id="demo">Load a broken example</button>
+  </div>
+  <div class="err" id="err"></div>
+  <p class="mut" style="font-size:14px;margin:14px 0 0">Nothing leaves the browser: the page is static, the checks are plain JavaScript, and there is no request made after it loads. You can run it with the network disconnected.</p>
+</div>
+
+<div id="results" class="hidden">
+  <h2>Result</h2>
+  <p class="mut" id="which"></p>
+  <div class="summary" id="summary"></div>
+  <div id="findings"></div>
+  <div id="clean" class="finding low hidden"><b>No findings.</b>All ten checks passed on this JSON. That means nothing mechanical is wrong with it — not that the logic does what you meant. The logic is the part a person has to read.</div>
+</div>
+
+<h2>What the ten checks are</h2>
+<table>
+  <tr><th>Check</th><th>Why it costs money</th></tr>
+  <tr><td>Webhook with no authentication</td><td>Anyone with the URL can post into the workflow. This is the most common way a small automation becomes an open door.</td></tr>
+  <tr><td>Secret written into a node</td><td>The credential travels inside every export, screenshot and copy of the workflow.</td></tr>
+  <tr><td>Placeholder left in a live field</td><td><code>YOUR_API_KEY</code> in a production node means the run fails at the first real call.</td></tr>
+  <tr><td>Disabled node still wired in</td><td>The branch around it runs with data it was never written for.</td></tr>
+  <tr><td>Expression pointing at a missing node</td><td><code>{{ $('Fetch leads') }}</code> resolves to null when that node was renamed or deleted. Silent empty fields, not an error.</td></tr>
+  <tr><td>No error workflow</td><td>A failed run leaves nothing but an entry in the executions list that nobody opens.</td></tr>
+  <tr><td>HTTP call with no retry</td><td>One 502 from the other side ends the run and every item behind it.</td></tr>
+  <tr><td>Writes with no de-duplication</td><td>A retry or a repeated trigger writes the same row twice, then someone cleans it up by hand.</td></tr>
+  <tr><td>More than one trigger</td><td>Two entry points on one canvas is how half-finished states appear.</td></tr>
+  <tr><td>Node connected to nothing</td><td>It never runs, so whatever it was meant to do is not happening.</td></tr>
+</table>
+
+<div class="box">
+  <h2 style="margin-top:0">When you want the part a rule cannot see</h2>
+  <p>The mechanical pass finds structure. It cannot tell you that the reminder goes out a day early across a DST change, that a retry double-counts, or that the approval gate lets a stale link publish. That needs the failure cases written down and replayed.</p>
+  <p style="margin-bottom:16px">Send me one workflow and I return a written audit of it — the failure cases, not an assurance — free, once, so you can judge the work before paying for anything.</p>
+  <a class="cta" href="mailto:perun.intelligence@gmail.com?subject=n8n%20workflow%20audit%20-%20send%20me%20one%20workflow&amp;body=Paste%20or%20attach%20the%20workflow%20JSON%20here.%20Remove%20credentials%20first%20-%20I%20do%20not%20want%20them.%0A%0AWhat%20it%20is%20supposed%20to%20do%3A%0AWhat%20actually%20happens%3A%0A">Email one workflow for a free written audit</a>
+  <a class="cta alt" style="margin-left:10px" href="https://fejzadenis.github.io/leadflow/build.html">Or see the fixed-price build: $450</a>
+</div>
+
+<h2>Why trust the report</h2>
+<p>Because you can disagree with it. Every finding quotes the node and the field, so a wrong one is visible in seconds. The rules are in <a href="https://fejzadenis.github.io/leadflow/assets/audit-engine.js">one readable file</a> and are covered by <code>tests/audit.test.mjs</code>, which fails the build if a rule fires on a workflow that is actually fine.</p>
+<p class="mut" style="font-size:15px">Known limits, stated up front: it does not execute anything, does not evaluate expressions, and does not know your data. A workflow can pass all ten checks and still be wrong.</p>
+
+<footer>
+  Built by the same hands that build the fixed-price workflows. <a href="https://fejzadenis.github.io/leadflow/">LeadFlow</a> ·
+  <a href="https://fejzadenis.github.io/leadflow/hire-n8n-developer.html">Hire the builder</a> ·
+  <a href="https://github.com/fejzadenis/n8n-lead-toolkit">Public workflows</a>
+</footer>
+
+</div>
+
+<script type="module">
+import { auditText } from "./assets/audit-engine.js";
+
+const $ = (id) => document.getElementById(id);
+const jsonBox = $("json"), errBox = $("err"), results = $("results");
+const summary = $("summary"), findingsBox = $("findings"), which = $("which");
+
+const DEMO = {
+  name: "example: lead intake (deliberately broken)",
+  settings: {},
+  nodes: [
+    { name: "Webhook", type: "n8n-nodes-base.webhook", parameters: { path: "incoming-leads" }, position: [0, 0] },
+    { name: "Create lead", type: "n8n-nodes-base.httpRequest", parameters: { url: "https://api.example.com/v1/leads", headerParameters: { parameters: [{ name: "Authorization", value: "Bearer sk-live-9f8a7b6c5d4e3f2a1b" }] } }, position: [220, 0] },
+    { name: "Old formatter", type: "n8n-nodes-base.set", parameters: { values: { string: [{ name: "email", value: "YOUR_API_KEY" }] } }, disabled: true, position: [440, 0] },
+    { name: "Append to sheet", type: "n8n-nodes-base.googleSheets", parameters: { operation: "append", sheetName: "Leads" }, position: [660, 0] },
+    { name: "Weekly clean-up", type: "n8n-nodes-base.scheduleTrigger", parameters: { rule: { interval: [{ field: "hours", hoursInterval: 24 }] } }, position: [0, 180] },
+    { name: "Left over from v1", type: "n8n-nodes-base.noOp", parameters: {}, position: [440, 180] }
+  ],
+  connections: {
+    "Webhook": { main: [[{ node: "Create lead", type: "main", index: 0 }]] },
+    "Create lead": { main: [[{ node: "Old formatter", type: "main", index: 0 }]] },
+    "Old formatter": { main: [[{ node: "Append to sheet", type: "main", index: 0 }]] }
+  }
+};
+
+function showError(msg) {
+  errBox.textContent = msg;
+  errBox.style.display = "block";
+}
+function clearError() {
+  errBox.textContent = "";
+  errBox.style.display = "none";
+}
+
+function render(reports) {
+  summary.innerHTML = "";
+  findingsBox.innerHTML = "";
+  results.classList.remove("hidden");
+
+  const totals = { high: 0, medium: 0, low: 0 };
+  for (const r of reports) for (const k of Object.keys(totals)) totals[k] += r.counts[k] || 0;
+
+  which.textContent = reports.length === 1
+    ? "Workflow: " + reports[0].name + " — " + reports[0].nodes + " nodes."
+    : reports.length + " workflows in that file.";
+
+  const pill = (cls, text) => {
+    const el = document.createElement("span");
+    el.className = "pill " + cls;
+    el.textContent = text;
+    summary.appendChild(el);
+  };
+  if (totals.high) pill("high", totals.high + " high");
+  if (totals.medium) pill("medium", totals.medium + " medium");
+  if (totals.low) pill("low", totals.low + " low");
+  if (!totals.high && !totals.medium && !totals.low) pill("ok", "0 findings");
+
+  const all = [];
+  for (const r of reports) for (const f of r.findings) all.push({ ...f, workflow: reports.length > 1 ? r.name : null });
+  const order = { high: 0, medium: 1, low: 2 };
+  all.sort((a, b) => order[a.severity] - order[b.severity]);
+
+  for (const f of all) {
+    const el = document.createElement("div");
+    el.className = "finding " + f.severity;
+    const label = document.createElement("b");
+    label.textContent = f.severity.toUpperCase() + " · " + f.check.replace(/-/g, " ");
+    el.appendChild(label);
+    if (f.node) {
+      const n = document.createElement("div");
+      n.className = "node";
+      n.textContent = "node: " + f.node + (f.workflow ? "  ·  workflow: " + f.workflow : "");
+      el.appendChild(n);
+    }
+    const d = document.createElement("div");
+    d.textContent = f.detail;
+    el.appendChild(d);
+    findingsBox.appendChild(el);
+  }
+  if (all.length === 0) $("clean").classList.remove("hidden");
+  else $("clean").classList.add("hidden");
+}
+
+$("run").addEventListener("click", () => {
+  clearError();
+  const text = jsonBox.value.trim();
+  if (!text) return showError("Paste a workflow JSON first, or press “Load a broken example”.");
+  try {
+    render(auditText(text));
+  } catch (e) {
+    results.classList.add("hidden");
+    showError("That is not a workflow I can read: " + e.message);
+  }
+});
+
+$("demo").addEventListener("click", () => {
+  jsonBox.value = JSON.stringify(DEMO, null, 2);
+  clearError();
+  render(auditText(jsonBox.value));
+});
+
+$("file").addEventListener("change", async (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (!f) return;
+  if (f.size > 4 * 1024 * 1024) return showError("That file is " + Math.round(f.size / 1048576) + " MB. Workflow JSON is normally under 1 MB — check you exported the workflow and not the whole database.");
+  jsonBox.value = await f.text();
+  clearError();
+  try { render(auditText(jsonBox.value)); } catch (e) { results.classList.add("hidden"); showError("That file is not workflow JSON: " + e.message); }
+});
+
+// Drop a .json file anywhere on the page.
+document.addEventListener("dragover", (e) => e.preventDefault());
+document.addEventListener("drop", async (e) => {
+  e.preventDefault();
+  const f = e.dataTransfer?.files?.[0];
+  if (!f) return;
+  jsonBox.value = await f.text();
+  clearError();
+  try { render(auditText(jsonBox.value)); } catch (err) { results.classList.add("hidden"); showError("That file is not workflow JSON: " + err.message); }
+});
+</script>
+</body>
+</html>
