@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>White-label n8n builds — $450 fixed, tested before you pay</title>
+<meta name="description" content="Fixed-price n8n workflow builds for agencies: $450 per workflow, 72 hours from spec to importable JSON, paid after the tests pass on your data. Your client, your margin, my name never appears.">
+<style>
+  :root{--ink:#14161a;--mut:#5b6470;--line:#e3e7ec;--bg:#fbfcfd;--acc:#0b6b53;--acc2:#eaf6f1;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.62 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:820px;margin:0 auto;padding:40px 22px 70px}
+  h1{font-size:34px;line-height:1.18;margin:0 0 14px;letter-spacing:-.01em}
+  h2{font-size:21px;margin:38px 0 10px}
+  p{margin:0 0 14px}
+  .lede{font-size:19px;color:#2b323b}
+  .mut{color:var(--mut)}
+  .box{border:1px solid var(--line);background:#fff;border-radius:12px;padding:20px 22px;margin:22px 0}
+  .price{display:flex;align-items:baseline;gap:12px;margin:6px 0 14px}
+  .price b{font-size:40px;letter-spacing:-.02em}
+  .cta{display:inline-block;background:var(--acc);color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:10px}
+  .cta.alt{background:#fff;color:var(--acc);border:2px solid var(--acc)}
+  ul{margin:0 0 14px 20px;padding:0}
+  li{margin:0 0 7px}
+  table{width:100%;border-collapse:collapse;margin:8px 0 16px;font-size:16px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+  code{background:#eef1f5;padding:2px 6px;border-radius:5px;font-size:15px}
+  .paid{display:none;background:var(--acc2);border:1px solid #bfe3d5;border-radius:10px;padding:14px 16px;margin:18px 0}
+  footer{margin-top:46px;border-top:1px solid var(--line);padding-top:16px;font-size:14px;color:var(--mut)}
+  a{color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>White-label n8n builds.<br>$450 per workflow, tested before you pay.</h1>
+
+<p class="lede">I build n8n workflows to spec so an agency does not lose a project it cannot staff this month. You keep the client, the margin and the relationship. My name never appears in it.</p>
+
+<div class="paid" id="paid">
+  <strong>Payment received.</strong> Send the spec to <a href="mailto:perun.intelligence@gmail.com?subject=n8n%20build%20-%20spec%20for%20a%20paid%20build">perun.intelligence@gmail.com</a> and you get a written confirmation of scope and a delivery date the same day.
+</div>
+
+<div class="box">
+  <div class="price"><b>$450</b><span class="mut">per workflow, fixed — no hourly, no change-order theatre</span></div>
+  <p style="margin-bottom:16px">72 hours from a written spec to an importable JSON file, with a test harness that replays the failures that break automations in production — retried jobs double-counting, duplicate webhooks, a missing day, DST. You get pass/fail per scenario, not an assurance.</p>
+  <p style="margin-bottom:16px"><strong>Paying:</strong> after the tests pass on your data, I invoice you — or pay now and the build starts today.</p>
+  <a class="cta" href="https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&amp;business=dragana.karans%40gmail.com&amp;item_name=n8n%20workflow%20build%20-%20fixed%20price&amp;amount=450.00&amp;currency_code=USD&amp;return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fbuild.html%3Fpaid%3D1&amp;cancel_return=https%3A%2F%2Ffejzadenis.github.io%2Fleadflow%2Fbuild.html">Pay $450 and start now</a>
+  <a class="cta alt" style="margin-left:10px" href="mailto:perun.intelligence@gmail.com?subject=n8n%20build%20-%20spec%20for%20a%20quote&amp;body=What%20it%20has%20to%20do%3A%0AWhich%20systems%20it%20touches%3A%0ADeadline%3A%0A">Send a spec, get a same-day quote</a>
+  <p class="mut" style="font-size:14px;margin:14px 0 0">Card or PayPal balance. 14 days to change your mind, no explanation needed.</p>
+</div>
+
+<h2>What has actually been built</h2>
+<p>Two of my own builds are public, with the test output inside them. Read them before you send anything.</p>
+
+<table>
+  <tr><th>Build</th><th>What it proves</th><th>Look</th></tr>
+  <tr>
+    <td>HVAC runtime-hour reminders (Ecobee → rebate prompt)</td>
+    <td>One row per customer per day so a retry rewrites the day instead of adding to it; idempotent reset webhook; rebate gated on zip and equipment age. <strong>16 of 16 scenarios pass in a real n8n instance.</strong></td>
+    <td><a href="https://gist.github.com/fejzadenis/a98a8f3739cfe6d2e271f95e1906a9b4">gist + execution output</a></td>
+  </tr>
+  <tr>
+    <td>Content approval gate (a post cannot publish without approval for its current revision)</td>
+    <td>Revision-keyed approvals, stale links refused as <code>stale_link</code>, idempotent decisions, one 48h chase, a publish gate that refuses. <strong>20 of 20 scenarios pass.</strong></td>
+    <td><a href="https://fejzadenis.github.io/content-approval-gate/">live clickable demo</a> · <a href="https://gist.github.com/fejzadenis/eeba1748b3d9b2467f3a6c6f1a009d27">gist</a></td>
+  </tr>
+</table>
+
+<h2>The terms, in full</h2>
+<ul>
+  <li><strong>$450 per workflow</strong>, fixed, quoted from your written spec. Multi-workflow jobs are quoted as a list, each line its own price.</li>
+  <li><strong>72 hours</strong> from spec to JSON, or the price drops — say the deadline up front and I will tell you honestly whether I can hit it before you commit.</li>
+  <li><strong>Paid after the tests pass</strong>, or up front if you want the build to start today. Same deliverable either way.</li>
+  <li><strong>Your client stays yours.</strong> I do not contact them, I do not put my name on the handover, and I sign an NDA if you have one.</li>
+  <li><strong>If the first test run fails on your data</strong>, you pay nothing and you keep the JSON to do what you like with it.</li>
+  <li><strong>What I will not do:</strong> scraping that breaks another site's terms, cold-email blasts from your domain, or anything that puts your sending reputation at risk.</li>
+</ul>
+
+<h2>Why the price is this low</h2>
+<p>No agency overhead, no account manager, no discovery workshop. You write what it must do; I build it, test it and send the JSON. If it needs a call, we have one — but the deliverable is a file that runs, not a deck.</p>
+
+<footer>
+  Denis Fejza — independent n8n builder · <a href="mailto:perun.intelligence@gmail.com">perun.intelligence@gmail.com</a> · answers within a day, usually within the hour<br>
+  Payments go to a PayPal business account, shown as <code>dragana.karans@gmail.com</code> on the statement. That is this business.
+</footer>
+
+</div>
+<script>
+  if (/[?&]paid=1/.test(location.search)) {
+    document.getElementById('paid').style.display = 'block';
+    window.scrollTo(0, 0);
+  }
+</script>
+</body>
+</html>
