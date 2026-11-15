@@ -12,6 +12,73 @@
 <p class="lead">A reviewer approves a revision. The editor then changes the text. The gate compares the content fingerprint, finds it no longer matches what was approved, and blocks publication - with no human in the loop and no way to slip the edited version through on the old approval.</p>
 </div></section>
 <section><div class="wrap">
+<h2>Try it yourself: approve, then edit</h2>
+<p class="muted small">This widget runs the same FNV-1a fingerprint that the workflow's Code nodes use, in your browser. Nothing is sent anywhere. Approve the caption, then change one word and press Publish.</p>
+<div style="border:1px solid #e3e6ea;border-radius:12px;padding:18px;margin:14px 0 8px">
+<label for="cap" style="font-weight:600;display:block;margin-bottom:6px;font-size:14px">Caption (revision v1)</label>
+<textarea id="cap" rows="3" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #cfd6dd;border-radius:8px;font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical">Hero headline: Turn messy lead lists into a clean pipeline</textarea>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+<button id="btnApprove" type="button" style="background:#111;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer">Approve this revision</button>
+<button id="btnPublish" type="button" style="background:#0b6b3a;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer">Publish</button>
+<button id="btnReset" type="button" style="background:#fff;color:#111;border:1px solid #cfd6dd;border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer">Reset</button>
+</div>
+<div id="state" style="margin-top:14px;font-size:14px;color:#5b6672">No revision approved yet. Press "Approve this revision".</div>
+<pre id="out" style="background:#0f1115;color:#e6edf3;padding:14px;border-radius:10px;overflow-x:auto;font-size:13px;margin:12px 0 0">waiting for a decision</pre>
+</div>
+<p class="muted small">Whitespace counts: adding a trailing space is enough to make the old approval stale. That is intentional - the fingerprint is over the exact text, not over "someone said yes at some point".</p>
+<script>
+(function () {
+  function fnv(s) {
+    var x = 2166136261;
+    for (var i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619); }
+    return (x >>> 0).toString(16).padStart(8, '0');
+  }
+  var cap = document.getElementById('cap');
+  var state = document.getElementById('state');
+  var out = document.getElementById('out');
+  var approvedHash = null;
+  var approvedText = null;
+  function paint() {
+    if (approvedHash === null) {
+      state.textContent = 'No revision approved yet. Press "Approve this revision".';
+      state.style.color = '#5b6672';
+    } else if (cap.value === approvedText) {
+      state.textContent = 'Approved revision ' + approvedHash + ' is still the current text.';
+      state.style.color = '#0b6b3a';
+    } else {
+      state.textContent = 'Approved ' + approvedHash + ', text has changed since (now ' + fnv(cap.value) + '). Publishing will be blocked.';
+      state.style.color = '#a33';
+    }
+  }
+  document.getElementById('btnApprove').addEventListener('click', function () {
+    approvedText = cap.value;
+    approvedHash = fnv(approvedText);
+    out.textContent = JSON.stringify({ decision: 'APPROVED', revision: 1, approved_hash: approvedHash }, null, 0);
+    paint();
+  });
+  document.getElementById('btnPublish').addEventListener('click', function () {
+    if (approvedHash === null) {
+      out.textContent = JSON.stringify({ decision: 'BLOCKED', reason: 'nothing was ever approved' }, null, 0);
+      return;
+    }
+    var current = fnv(cap.value);
+    if (current === approvedHash) {
+      out.textContent = JSON.stringify({ decision: 'PUBLISHED', reason: 'hash matches the approved revision', approved_hash: approvedHash, current_hash: current }, null, 0);
+    } else {
+      out.textContent = JSON.stringify({ decision: 'BLOCKED', reason: 'content changed after approval - approval is stale', approved_hash: approvedHash, current_hash: current, alert: 'slack/email alert would fire here' }, null, 0);
+    }
+  });
+  document.getElementById('btnReset').addEventListener('click', function () {
+    cap.value = 'Hero headline: Turn messy lead lists into a clean pipeline';
+    approvedHash = null;
+    approvedText = null;
+    out.textContent = 'waiting for a decision';
+    paint();
+  });
+  cap.addEventListener('input', paint);
+  paint();
+})();
+</script>
 <h2>The run, verbatim</h2>
 <pre style="background:#0f1115;color:#e6edf3;padding:16px;border-radius:10px;overflow-x:auto;font-size:13px">{"decision":"BLOCKED","reason":"content changed after approval - approval is stale","approved_hash":"3fbd1432","current_hash":"c953f47d","alert":"slack/email alert would fire here"}</pre>
 <p class="muted small">Approved fingerprint <code>3fbd1432</code>. After the edit the content hashed to <code>c953f47d</code>. The publish branch refused.</p>
