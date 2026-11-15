@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WordPress published a change nobody re-approved: the hash fix</title>
+<meta name="description" content="An approval in WordPress is a flag with no memory of the text it approved. Store a SHA-256 of the approved content and block the publish when it no longer matches - free GPL plugin, working demo, honest limits.">
+<link rel="canonical" href="https://fejzadenis.github.io/leadflow/wordpress-approval-workflow.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="LeadFlow">
+<meta property="og:url" content="https://fejzadenis.github.io/leadflow/wordpress-approval-workflow.html">
+<meta property="og:title" content="WordPress published a change nobody re-approved: the hash fix">
+<meta property="og:description" content="Store a hash of the approved post text and force the post back to draft when it changes. Free GPL plugin, clickable demo, and the cases it does not cover.">
+<meta property="og:image" content="https://fejzadenis.github.io/leadflow/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+:root{--bg:#0b0f14;--card:#131a22;--text:#e6edf3;--muted:#8b98a9;--accent:#4f8cff;--green:#2ea043;--border:#22303c}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+.wrap{max-width:840px;margin:0 auto;padding:48px 24px}
+h1{font-size:2.2rem;line-height:1.2;margin-bottom:14px}h1 span{color:var(--accent)}
+h2{font-size:1.35rem;margin:38px 0 10px}
+.lead{font-size:1.12rem;color:var(--muted);margin-bottom:22px}
+.box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin:20px 0}
+.box p,.box li{color:var(--muted);font-size:.95rem}
+ul,ol{margin:10px 0 0 22px}li{margin:7px 0;color:var(--muted)}
+code{background:#0e151d;border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:.9em;color:#c8d6e5}
+pre{background:#0e151d;border:1px solid var(--border);border-radius:10px;padding:16px;overflow:auto;max-height:520px;margin:14px 0}
+pre code{border:0;padding:0;background:none;font-size:.78rem;line-height:1.5;white-space:pre;color:#c8d6e5}
+.btn{display:inline-block;background:var(--accent);color:#fff;padding:13px 24px;border-radius:10px;font-weight:700;text-decoration:none}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.muted{color:var(--muted);font-size:.9rem}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.9rem}
+td,th{border:1px solid var(--border);padding:8px 10px;text-align:left;color:var(--muted)}
+th{color:var(--text);font-weight:600}
+.honest{border-left:3px solid var(--green);padding-left:14px}
+.footer{color:var(--muted);font-size:.85rem;border-top:1px solid var(--border);margin-top:44px;padding-top:18px}
+a{color:var(--accent)}
+</style>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Why did WordPress publish a change that was never approved?","acceptedAnswer":{"@type":"Answer","text":"Because the approval in most WordPress setups is a flag on the post - a status, a role, or a checkbox - and a flag carries no memory of the text it approved. Anyone with edit and publish rights can change a sentence after sign-off, and the post still publishes with the approval looking intact."}},{"@type":"Question","name":"Does restricting publishing to an Editor or Administrator fix it?","acceptedAnswer":{"@type":"Answer","text":"No. Role separation controls who can press Publish, not what gets published. The reviewer is often the person making the last-minute edit, and any second account with publish rights bypasses the reviewer entirely. The check has to be about the text, not the person."}},{"@type":"Question","name":"Where in WordPress should the check live?","acceptedAnswer":{"@type":"Answer","text":"In the wp_insert_post_data filter. It runs before the row is written for the classic editor, the block editor, the REST API, quick edit and bulk edit, so a normal save cannot go around it. An admin-side validation or a JavaScript check can be bypassed by a REST call."}},{"@type":"Question","name":"Does a content hash catch every change?","acceptedAnswer":{"@type":"Answer","text":"No, and it should not be sold that way. A hash over post_title, post_content and post_excerpt catches text edits. It does not catch a swapped featured image, a changed custom field, a modified template or a plugin that alters output at render time. It also cannot judge whether an edit is good or bad - only that the text is not the text that was signed off."}}]}</script>
+</head><body><div class="wrap">
+<p class="muted"><a href="./">LeadFlow</a> / WordPress approval workflow</p>
+<h1>WordPress published a change <span>nobody re-approved</span></h1>
+<p class="lead">A writer drafts, a reviewer signs it off, and an hour before launch somebody fixes "just a typo" - except the typo was the price in the third paragraph. The post still says approved. It still publishes. The approval was a flag with no memory of what it approved.</p>
+
+<h2>What is actually broken</h2>
+<table><tr><th>What the site has</th><th>What it proves</th><th>What it misses</th></tr>
+<tr><td>A status like <code>approved</code>, or "Editor can publish"</td><td>That somebody pressed a button at some point</td><td>Whether the text in the row is the text that was on screen then</td></tr>
+<tr><td>Revisions</td><td>History exists after the fact</td><td>Nothing stops the write; you find out from a client email</td></tr>
+<tr><td>A staging site</td><td>A copy existed somewhere</td><td>Production still accepts any edit, from anyone, at any time</td></tr>
+<tr><td>A hash of title + content + excerpt taken at approval</td><td>That this exact text was signed off</td><td>Edits, and nothing else - see the limits below</td></tr></table>
+<p class="muted">The first three answer "was this workflow followed?". Only the fourth answers "is this the text that was approved?".</p>
+
+<h2>Why roles and permissions do not solve it</h2>
+<div class="box">
+<p>Giving publish rights only to a reviewer controls <b>who</b> can publish. It says nothing about <b>what</b>. In practice the reviewer is the one making the last-minute edit half the time, and a second administrator - the agency, the VA, the intern with an app password - goes around the reviewer completely.</p>
+<p>The same hole exists in the other direction: an automation that gates publishing with an approval step is bypassed the moment a human publishes from wp-admin. If the check lives in the automation, the site is only protected for the people who use the automation.</p>
+</div>
+
+<h2>The mechanism</h2>
+<ol>
+<li>On approval, store the SHA-256 of <code>post_title</code> + <code>post_content</code> + <code>post_excerpt</code> together, in post meta.</li>
+<li>On every save, recompute that hash from the incoming data, before the row is written.</li>
+<li>If the stored hash is missing, or does not equal the recomputed one, force the post back to <code>draft</code>.</li>
+<li>Show both hashes in an admin notice, so "which version was approved" is answerable instead of arguable.</li>
+</ol>
+<p>The hook is the whole argument for this design: <code>wp_insert_post_data</code> runs for the classic editor, the block editor, the REST API, quick edit and bulk edit. A save that goes through WordPress goes through that filter, which is why the check belongs there and not in an admin-side validation or a JavaScript guard.</p>
+
+<pre><code>// Simplified excerpt - the plugin does the bookkeeping around this.
+add_filter( 'wp_insert_post_data', function ( $data, $postarr ) {
+    $post_id = (int) ( $postarr['ID'] ?? 0 );
+    if ( ! $post_id || 'publish' !== $data['post_status'] ) {
+        return $data;                     // only a publish attempt is gated
+    }
+
+    $approved = get_post_meta( $post_id, '_sag_approved_hash', true );
+    if ( '' === $approved ) {
+        return $data;                     // never approved: not this check's business
+    }
+    $current  = hash( 'sha256',
+        $data['post_title'] . "\n" . $data['post_content'] . "\n" . $data['post_excerpt']
+    );
+
+    if ( empty( $approved ) || ! hash_equals( $approved, $current ) ) {
+        $data['post_status'] = 'draft';       // publish refused
+        set_transient( 'sag_blocked_' . $post_id, array(
+            'approved' => $approved,
+            'current'  => $current,
+        ), 60 );
+    }
+
+    return $data;
+}, 10, 2 );</code></pre>
+<p class="muted">The real plugin also re-stamps the hash when an authorised user approves or re-approves, registers a meta box, adds a list column, and leaves three filters open: <code>sag_post_types</code>, <code>sag_blocked_status</code>, <code>sag_block_publish</code>.</p>
+
+<h2>What it does not cover</h2>
+<div class="box honest">
+<ul>
+<li><b>Images and custom fields.</b> The hash covers the three text fields. Swap the featured image after approval and the hash does not move.</li>
+<li><b>Judgement.</b> It cannot tell a good edit from a bad one. It only says: this is not what was signed off.</li>
+<li><b>Render-time changes.</b> A template edit, a shortcode or a plugin that rewrites output later is outside the check.</li>
+<li><b>Friction.</b> It will annoy somebody exactly once per project, on the day the process changes - which is the point, and worth saying out loud before you install it.</li>
+</ul>
+</div>
+
+<h2>Get it</h2>
+<div class="box">
+<p><b>Free, GPLv2.</b> <em>Stale Approval Gate</em> is a small plugin that does exactly the above: hashes the approved text, refuses the publish when it no longer matches, and names both hashes on screen. Tested against WordPress 7.1 with Plugin Check reporting no errors, and a 12-case PHP behaviour suite around the gate itself. It is in review for the WordPress.org directory; until it clears, install the zip through <b>Plugins &rarr; Add New &rarr; Upload Plugin</b>.</p>
+<p><a class="btn" href="https://github.com/fejzadenis/stale-approval-gate">Download on GitHub</a>
+<a class="btn ghost" href="https://github.com/fejzadenis/stale-approval-gate/releases/download/v1.0.0/stale-approval-gate.zip">Direct .zip</a>
+<a class="btn ghost" href="approval-gate-demo.html">Clickable demo of the block</a></p>
+<p class="muted">The demo is the real page driven in a browser: approve, change one word, press Publish, watch it come back as <code>BLOCKED</code> with both hashes.</p>
+</div>
+
+<h2>If you would rather not touch it yourself</h2>
+<div class="box">
+<p>I install it, set the post types and the roles that can approve, and confirm it blocks a real case on your site - one site, one hour, <b>$49</b>, paid after it blocks the case you hand me. If it does not block it, you owe nothing. Payment by PayPal, and the free download above stays free either way.</p>
+<p class="muted">Email: perun.intelligence@gmail.com &middot; I am a one-person shop, so that inbox is me.</p>
+</div>
+
+<div class="footer">
+<p>Written by Denis Fejza - automation and WordPress work. The plugin above is mine, it is GPL, and the paid part is only the installation. <a href="./">More pages</a>.</p>
+</div>
+</div></body></html>
