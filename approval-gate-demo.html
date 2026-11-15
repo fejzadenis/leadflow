@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Content approval gate - stale approvals blocked (n8n demo)</title>
+<meta name="description" content="A working n8n approval gate: a reviewer approves a revision, the editor changes it, and the stale approval can no longer publish. Includes the execution output and the workflow JSON.">
+<link rel="stylesheet" href="assets/site.css">
+</head><body>
+<header class="site-head"><div class="wrap"><a class="brand" href="/leadflow/"><span class="dot"></span>LeadFlow</a>
+<nav class="nav"><a href="demo.html">Demo</a><a href="docs.html">Docs</a><a href="index.html#pricing">Pricing</a></nav></div></header>
+<section class="hero"><div class="wrap">
+<span class="eyebrow">n8n &middot; approval gate &middot; reproducible</span>
+<h1>A stale approval cannot publish</h1>
+<p class="lead">A reviewer approves a revision. The editor then changes the text. The gate compares the content fingerprint, finds it no longer matches what was approved, and blocks publication - with no human in the loop and no way to slip the edited version through on the old approval.</p>
+</div></section>
+<section><div class="wrap">
+<h2>The run, verbatim</h2>
+<pre style="background:#0f1115;color:#e6edf3;padding:16px;border-radius:10px;overflow-x:auto;font-size:13px">{"decision":"BLOCKED","reason":"content changed after approval - approval is stale","approved_hash":"3fbd1432","current_hash":"c953f47d","alert":"slack/email alert would fire here"}</pre>
+<p class="muted small">Approved fingerprint <code>3fbd1432</code>. After the edit the content hashed to <code>c953f47d</code>. The publish branch refused.</p>
+<h2 class="mt-24">Why it is content-hash based, not a boolean</h2>
+<ul class="list">
+<li><span class="tick">1</span><span>Revision v1 is stored with a fingerprint of its exact text (FNV-1a over the content, not a timestamp).</span></li>
+<li><span class="tick">2</span><span>Approval records <em>the hash that was approved</em>, never a bare "approved: true".</span></li>
+<li><span class="tick">3</span><span>Any edit recomputes the hash. Nothing rewrites <code>approved_hash</code>.</span></li>
+<li><span class="tick">4</span><span>An IF node compares current hash to approved hash: equal publishes, different blocks and raises the alert.</span></li>
+<li><span class="tick">5</span><span>A whitespace-only edit also goes stale - which is what most teams want once they see it.</span></li>
+</ul>
+<h2 class="mt-24">The workflow</h2>
+<p class="muted small">Import this JSON into any n8n instance: webhook &rarr; revision v1 &rarr; approve &rarr; edit after approval &rarr; hash comparison &rarr; publish / block.</p>
+<pre style="background:#0f1115;color:#e6edf3;padding:16px;border-radius:10px;overflow-x:auto;font-size:12px;max-height:420px">{
+ "name": "05d - Approval gate (live demo)",
+ "nodes": [
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "approval-gate-demo",
+    "responseMode": "lastNode",
+    "options": {}
+   },
+   "name": "Webhook",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    -420,
+    300
+   ],
+   "webhookId": "approval-gate-demo"
+  },
+  {
+   "parameters": {
+    "jsCode": "function h(s){let x=2166136261;for(let i=0;i&lt;s.length;i++){x^=s.charCodeAt(i);x=Math.imul(x,16777619);}return (x>>>0).toString(16).padStart(8,'0');}\nconst content='Hero headline: Turn messy lead lists into a clean pipeline';\nreturn [{json:{revision:1,content,hash:h(content),status:'draft'}}];"
+   },
+   "name": "Revision v1 (draft)",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -200,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "// Reviewer approves exactly this version, storing the hash they approved\nconst r = $input.first().json;\nreturn [{ json: { ...r, approved_hash: r.hash, approved_at: new Date().toISOString(), status: 'approved' } }];"
+   },
+   "name": "Approve v1",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    20,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "function h(s){let x=2166136261;for(let i=0;i&lt;s.length;i++){x^=s.charCodeAt(i);x=Math.imul(x,16777619);}return (x>>>0).toString(16).padStart(8,'0');}\nconst r=$input.first().json;\nconst edited='Hero headline: Turn ANY messy lead list into revenue';\nreturn [{json:{...r,revision:2,content:edited,hash:h(edited),status:'edited'}}];"
+   },
+   "name": "Edit after approval",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    240,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "version": 2
+     },
+     "conditions": [
+      {
+       "leftValue": "={{ $json.hash }}",
+       "rightValue": "={{ $json.approved_hash }}",
+       "operator": {
+        "type": "string",
+        "operation": "equals"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "name": "Is approval still valid?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    460,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "return [{ json: { decision: 'PUBLISHED', reason: 'hash matches the approved revision', revision: $json.revision } }];"
+   },
+   "name": "Publish",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    700,
+    200
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "// The guard: a stale approval can never publish\nreturn [{ json: { decision: 'BLOCKED', reason: 'content changed after approval - approval is stale', approved_hash: $json.approved_hash, current_hash: $json.hash, alert: 'slack/email alert would fire here' } }];"
+   },
+   "name": "Block publication",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    700,
+    400
+   ]
+  }
+ ],
+ "connections": {
+  "Revision v1 (draft)": {
+   "main": [
+    [
+     {
+      "node": "Approve v1",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Approve v1": {
+   "main": [
+    [
+     {
+      "node": "Edit after approval",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Edit after approval": {
+   "main": [
+    [
+     {
+      "node": "Is approval still valid?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Is approval still valid?": {
+   "main": [
+    [
+     {
+      "node": "Publish",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Block publication",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Webhook": {
+   "main": [
+    [
+     {
+      "node": "Revision v1 (draft)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {}
+}</pre>
+<p class="muted small mt-16">Built and executed on a self-hosted n8n instance. Webhook: <code>POST /webhook/approval-gate-demo</code>.</p>
+</div></section>
+<footer class="site-foot"><div class="wrap"><span>LeadFlow - automation builds and diagnostics.</span><span><a href="mailto:perun.intelligence@gmail.com">perun.intelligence@gmail.com</a></span></div></footer>
+</body></html>
