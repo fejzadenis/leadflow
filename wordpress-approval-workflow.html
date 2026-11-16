@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WordPress published a change nobody re-approved: the hash fix</title>
-<meta name="description" content="An approval in WordPress is a flag with no memory of the text it approved. Store a SHA-256 of the approved content and block the publish when it no longer matches - free GPL plugin, working demo, honest limits.">
+<title>WordPress approval workflow plugin: block publishing when the approved text changes</title>
+<meta name="description" content="A free WordPress approval workflow plugin: it stores a SHA-256 of the approved content and blocks the publish when the text no longer matches. Working demo, honest limits.">
 <link rel="canonical" href="https://fejzadenis.github.io/leadflow/wordpress-approval-workflow.html">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="LeadFlow">
 <meta property="og:url" content="https://fejzadenis.github.io/leadflow/wordpress-approval-workflow.html">
-<meta property="og:title" content="WordPress published a change nobody re-approved: the hash fix">
+<meta property="og:title" content="WordPress approval workflow plugin: block publishing when the approved text changes">
 <meta property="og:description" content="Store a hash of the approved post text and force the post back to draft when it changes. Free GPL plugin, clickable demo, and the cases it does not cover.">
 <meta property="og:image" content="https://fejzadenis.github.io/leadflow/og.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -37,7 +37,7 @@ a{color:var(--accent)}
 </head><body><div class="wrap">
 <p class="muted"><a href="./">LeadFlow</a> / WordPress approval workflow</p>
 <h1>WordPress published a change <span>nobody re-approved</span></h1>
-<p class="lead">A writer drafts, a reviewer signs it off, and an hour before launch somebody fixes "just a typo" - except the typo was the price in the third paragraph. The post still says approved. It still publishes. The approval was a flag with no memory of what it approved.</p>
+<p class="lead">A WordPress approval workflow plugin answers the one question roles, statuses and staging sites cannot: is the text about to publish the exact text that was signed off? What follows is the mechanism, the free plugin that implements it, and the cases it does not cover. A writer drafts, a reviewer signs it off, and an hour before launch somebody fixes "just a typo" - except the typo was the price in the third paragraph. The post still says approved. It still publishes. The approval was a flag with no memory of what it approved.</p>
 
 <h2>What is actually broken</h2>
 <table><tr><th>What the site has</th><th>What it proves</th><th>What it misses</th></tr>
@@ -99,7 +99,7 @@ add_filter( 'wp_insert_post_data', function ( $data, $postarr ) {
 </ul>
 </div>
 
-<h2>Get it</h2>
+<h2>Get the approval workflow plugin (free, GPLv2)</h2>
 <div class="box">
 <p><b>Free, GPLv2.</b> <em>Stale Approval Gate</em> is a small plugin that does exactly the above: hashes the approved text, refuses the publish when it no longer matches, and names both hashes on screen. Tested against WordPress 7.1 with Plugin Check reporting no errors, and a 12-case PHP behaviour suite around the gate itself. It is in review for the WordPress.org directory; until it clears, install the zip through <b>Plugins &rarr; Add New &rarr; Upload Plugin</b>.</p>
 <p><a class="btn" href="https://github.com/fejzadenis/stale-approval-gate">Download on GitHub</a>
